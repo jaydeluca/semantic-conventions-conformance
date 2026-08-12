@@ -15,7 +15,12 @@ to under ``server:``.
 import shutil
 from pathlib import Path
 
-from opentelemetry.conformance import Domain, cache_dir, require_pin
+from opentelemetry.conformance import (
+    Domain,
+    cache_dir,
+    require_pin,
+    resolve_coverage_model,
+)
 
 from ._coverage import classifier
 
@@ -24,7 +29,7 @@ _HERE = Path(__file__).parent
 _UNFETCHABLE_REF = '"$ref": "http://json-schema.org/draft-07/schema#"'
 
 
-def _advice_data(registry: Path) -> str:
+def _advice_data(registry: Path, model_path: Path | None = None) -> str:
     """A ``--advice-data`` glob of the GenAI content JSON schemas.
 
     The schemas are copied out of the registry before being handed to weaver,
@@ -40,6 +45,12 @@ def _advice_data(registry: Path) -> str:
     if staged.exists():
         shutil.rmtree(staged)
     staged.mkdir(parents=True)
+
+    if model_path is not None:
+        shutil.copy(model_path, staged / "coverage-model.json")
+    else:
+        resolve_coverage_model(registry, staged / "coverage-model.json")
+
     for schema in sorted(source.glob("*.json")):
         text = schema.read_text(encoding="utf-8")
         (staged / schema.name).write_text(
