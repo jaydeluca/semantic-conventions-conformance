@@ -23,10 +23,64 @@ ENDPOINTS = [
         {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "hi"}]},
     ),
     (
+        "openai-chat-json-schema",
+        "post",
+        "/v1/chat/completions",
+        {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "hi"}],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "forecast",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "location": {"type": "string"},
+                            "temperature": {"type": "integer"},
+                        },
+                    },
+                },
+            },
+        },
+    ),
+    (
         "openai-embeddings",
         "post",
         "/v1/embeddings",
         {"model": "text-embedding-3-small", "input": "hi"},
+    ),
+    (
+        "openai-embeddings-batched",
+        "post",
+        "/v1/embeddings",
+        {"model": "text-embedding-3-small", "input": ["one", "two"]},
+    ),
+    (
+        "bedrock-converse-tool-use",
+        "post",
+        "/model/anthropic.claude-v2/converse",
+        {
+            "messages": [{"role": "user", "content": [{"text": "hi"}]}],
+            "toolConfig": {
+                "tools": [
+                    {
+                        "toolSpec": {
+                            "name": "get_current_weather",
+                            "inputSchema": {
+                                "json": {
+                                    "type": "object",
+                                    "properties": {
+                                        "location": {"type": "string"}
+                                    },
+                                    "required": ["location"],
+                                }
+                            },
+                        }
+                    }
+                ]
+            },
+        },
     ),
     (
         "openai-responses",
@@ -120,6 +174,7 @@ def test_chat_echoes_the_requested_model(client):
     assert body["model"] == "gpt-5"
     assert body["choices"][0]["message"]["role"] == "assistant"
     assert body["usage"]["total_tokens"] > 0
+    assert body["service_tier"] == "default"
 
 
 def test_chat_returns_a_tool_call_when_tools_are_offered(client):
@@ -145,6 +200,312 @@ def test_chat_returns_a_tool_call_when_tools_are_offered(client):
     tool_calls = response.json["choices"][0]["message"]["tool_calls"]
     assert [call["function"]["name"] for call in tool_calls] == ["get_weather"]
     assert "location" in json.loads(tool_calls[0]["function"]["arguments"])
+
+
+def test_bedrock_converse_returns_a_tool_use_when_tools_are_offered(client):
+    body = {
+        "messages": [
+            {"role": "user", "content": [{"text": "weather in Seattle?"}]}
+        ],
+        "toolConfig": {
+            "tools": [
+                {
+                    "toolSpec": {
+                        "name": "get_current_weather",
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {"location": {"type": "string"}},
+                                "required": ["location"],
+                            }
+                        },
+                    }
+                }
+            ]
+        },
+    }
+    response = client.post("/model/anthropic.claude-v2/converse", json=body)
+    assert response.json["stopReason"] == "tool_use"
+    tool_use = response.json["output"]["message"]["content"][0]["toolUse"]
+    assert tool_use["name"] == "get_current_weather"
+    assert tool_use["input"] == {"location": "Seattle"}
+
+    # Once the result comes back the model answers instead of calling again.
+    body["messages"].append(
+        {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": tool_use["toolUseId"],
+                        "content": [{"text": "70 degrees and sunny"}],
+                    }
+                }
+            ],
+        }
+    )
+    answer = client.post("/model/anthropic.claude-v2/converse", json=body)
+    assert answer.json["stopReason"] == "end_turn"
+
+
+def test_bedrock_converse_calls_the_tool_the_request_chose(client):
+    def tool(name):
+        return {
+            "toolSpec": {
+                "name": name,
+                "inputSchema": {"json": {"type": "object", "properties": {}}},
+            }
+        }
+
+    body = {
+        "messages": [{"role": "user", "content": [{"text": "hi"}]}],
+        "toolConfig": {
+            "tools": [tool("get_weather"), tool("get_time")],
+            "toolChoice": {"tool": {"name": "get_time"}},
+        },
+    }
+    response = client.post("/model/anthropic.claude-v2/converse", json=body)
+    content = response.json["output"]["message"]["content"][0]
+    assert content["toolUse"]["name"] == "get_time"
+
+
+def test_bedrock_converse_answers_when_no_tool_is_offered(client):
+    # Inventing a call would hand the client a tool it does not have.
+    response = client.post(
+        "/model/anthropic.claude-v2/converse",
+        json={
+            "messages": [{"role": "user", "content": [{"text": "hi"}]}],
+            "toolConfig": {"tools": []},
+        },
+    )
+    assert response.json["stopReason"] == "end_turn"
+
+
+def test_embeddings_treat_token_ids_as_one_input(client):
+    response = client.post(
+        "/v1/embeddings",
+        json={"model": "text-embedding-3-small", "input": [1, 2, 3, 4, 5]},
+    )
+    assert len(response.json["data"]) == 1
+
+
+def test_embeddings_reject_an_empty_input(client):
+    response = client.post(
+        "/v1/embeddings", json={"model": "text-embedding-3-small", "input": []}
+    )
+    assert response.status_code == 400
+
+
+def test_embeddings_survive_an_unusable_dimension_count(client):
+    response = client.post(
+        "/v1/embeddings",
+        json={
+            "model": "text-embedding-3-small",
+            "input": "hi",
+            "dimensions": "not-a-number",
+        },
+    )
+    assert response.status_code == 200
+    assert len(response.json["data"][0]["embedding"]) == 256
+
+
+def test_chat_reports_the_service_tier_that_served_the_request(client):
+    def tier(requested):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": "hi"}],
+                **({"service_tier": requested} if requested else {}),
+            },
+        )
+        return response.json["service_tier"]
+
+    assert tier(None) == "default"
+    # "auto" is a request for the API to choose, never the tier it answers on.
+    assert tier("auto") == "default"
+    assert tier("flex") == "flex"
+
+
+def test_streaming_chat_reports_the_service_tier(client):
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "hi"}],
+            "service_tier": "priority",
+            "stream": True,
+        },
+    )
+    first = json.loads(
+        response.get_data(as_text=True).split("\n\n")[0].removeprefix("data: ")
+    )
+    assert first["service_tier"] == "priority"
+
+
+def test_json_schema_follows_refs_and_skips_null_branches(client):
+    # The shape a schema generated from a class has.
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "hi"}],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "forecast",
+                    "schema": {
+                        "type": "object",
+                        "$defs": {
+                            "Day": {
+                                "type": "object",
+                                "properties": {"summary": {"type": "string"}},
+                            }
+                        },
+                        "properties": {
+                            "days": {
+                                "type": "array",
+                                "items": {"$ref": "#/$defs/Day"},
+                            },
+                            "note": {
+                                "anyOf": [
+                                    {"type": "null"},
+                                    {"type": "string"},
+                                ]
+                            },
+                            "issued": {"type": "string", "format": "date-time"},
+                        },
+                    },
+                },
+            },
+        },
+    )
+    answer = json.loads(response.json["choices"][0]["message"]["content"])
+    assert answer == {
+        "days": [{"summary": "mock-summary"}],
+        "note": "mock-note",
+        "issued": "2023-11-14T22:13:20Z",
+    }
+
+
+def test_json_schema_cuts_off_a_self_referencing_model(client):
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "hi"}],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "node",
+                    "schema": {
+                        "type": "object",
+                        "$defs": {
+                            "Node": {
+                                "type": "object",
+                                "properties": {"child": {"$ref": "#/$defs/Node"}},
+                            }
+                        },
+                        "properties": {"root": {"$ref": "#/$defs/Node"}},
+                    },
+                },
+            },
+        },
+    )
+    # Only that it terminates matters, not the depth it stops at.
+    assert response.status_code == 200
+    json.loads(response.json["choices"][0]["message"]["content"])
+
+
+def test_google_answers_a_response_schema_with_matching_json(client):
+    response = client.post(
+        "/v1beta/models/gemini-2.0-flash:generateContent",
+        json={
+            "contents": [{"role": "user", "parts": [{"text": "weather?"}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                # Gemini spells its schema in upper-case enum names.
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "location": {"type": "STRING"},
+                        "temperature": {"type": "INTEGER"},
+                    },
+                },
+            },
+        },
+    )
+    text = response.json["candidates"][0]["content"]["parts"][0]["text"]
+    assert json.loads(text) == {"location": "Seattle", "temperature": 1}
+
+
+def test_google_batch_embeddings_answer_one_vector_per_request(client):
+    response = client.post(
+        "/v1beta/models/text-embedding-004:batchEmbedContents",
+        json={
+            "requests": [
+                {"content": {"parts": [{"text": "one"}]}},
+                {"content": {"parts": [{"text": "two"}]}},
+            ]
+        },
+    )
+    assert len(response.json["embeddings"]) == 2
+    assert response.json["usageMetadata"]["promptTokenCount"] == 16
+
+
+def test_embeddings_answer_one_vector_per_input(client):
+    response = client.post(
+        "/v1/embeddings",
+        json={
+            "model": "text-embedding-3-small",
+            "input": ["one", "two", "three"],
+            "dimensions": 8,
+        },
+    )
+    data = response.json["data"]
+    assert [entry["index"] for entry in data] == [0, 1, 2]
+    assert all(len(entry["embedding"]) == 8 for entry in data)
+    assert response.json["usage"]["prompt_tokens"] == 24
+
+
+def test_chat_answers_a_json_schema_with_a_matching_object(client):
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "how is the weather?"}],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "forecast",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "location": {"type": "string"},
+                            "temperature": {"type": "integer"},
+                            "conditions": {"enum": ["sunny", "rainy"]},
+                            "days": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {"summary": {"type": "string"}},
+                                },
+                            },
+                        },
+                        "required": ["location", "temperature", "conditions", "days"],
+                    },
+                },
+            },
+        },
+    )
+    answer = json.loads(response.json["choices"][0]["message"]["content"])
+    assert answer == {
+        "location": "Seattle",
+        "temperature": 1,
+        "conditions": "sunny",
+        "days": [{"summary": "mock-summary"}],
+    }
 
 
 def test_chat_streams_when_asked(client):

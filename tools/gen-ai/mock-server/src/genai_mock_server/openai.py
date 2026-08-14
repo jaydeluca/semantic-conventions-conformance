@@ -6,7 +6,7 @@ import re
 
 from flask import Blueprint, Response, request
 
-from ._common import mock_tool_arguments, sse
+from ._common import mock_json_schema_value, mock_tool_arguments, sse
 
 bp = Blueprint("openai", __name__)
 
@@ -24,6 +24,7 @@ _RESUMABLE_RESPONSES = set()
 CHAT_REFUSAL_RESPONSE = {
     "id": "chatcmpl-mock-refusal-001",
     "object": "chat.completion",
+    "service_tier": "default",
     "created": 1700000000,
     "model": "gpt-4o-mini",
     "choices": [
@@ -48,6 +49,7 @@ CHAT_REFUSAL_RESPONSE = {
 CHAT_RESPONSE = {
     "id": "chatcmpl-mock-001",
     "object": "chat.completion",
+    "service_tier": "default",
     "created": 1700000000,
     "model": "gpt-4o-mini",
     "choices": [
@@ -70,6 +72,7 @@ CHAT_RESPONSE = {
 CHAT_TOOL_CALL_RESPONSE = {
     "id": "chatcmpl-mock-002",
     "object": "chat.completion",
+    "service_tier": "default",
     "created": 1700000000,
     "model": "gpt-4o-mini",
     "choices": [
@@ -102,6 +105,7 @@ CHAT_TOOL_CALL_RESPONSE = {
 CHAT_AUDIO_RESPONSE = {
     "id": "chatcmpl-mock-audio-001",
     "object": "chat.completion",
+    "service_tier": "default",
     "created": 1700000000,
     "model": "gpt-4o-audio-preview",
     "choices": [
@@ -182,6 +186,18 @@ RESPONSES_RESPONSE = {
         "total_tokens": 37,
     },
 }
+
+
+def _served_service_tier(body):
+    """The tier the request is answered on.
+
+    The real API reports the tier that actually served the request, so "auto"
+    comes back as the tier it resolved to rather than as "auto".
+    """
+    requested = body.get("service_tier")
+    if not requested or requested == "auto":
+        return "default"
+    return requested
 
 
 def _has_audio_input(body):
@@ -283,6 +299,9 @@ def _mock_chat_content(body, message_text):
         )
 
     response_format = body.get("response_format") or {}
+    if response_format.get("type") == "json_schema":
+        json_schema = response_format.get("json_schema") or {}
+        return json.dumps(mock_json_schema_value(json_schema.get("schema")))
     if response_format.get("type") != "json_object":
         return "This is a response from the mock server."
 
@@ -364,6 +383,7 @@ def _stream_chat(body):
             "object": "chat.completion.chunk",
             "created": 1700000000,
             "model": model,
+            "service_tier": _served_service_tier(body),
             "choices": [{"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": None}],
         }
     )
@@ -436,6 +456,7 @@ def chat_completions(deployment=None):
             resp["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = json.dumps(
                 mock_tool_arguments(tool)
             )
+            resp["service_tier"] = _served_service_tier(body)
             return resp
 
     # CrewAI planner natural-retry path: a refusal, then a schema-invalid
@@ -451,6 +472,7 @@ def chat_completions(deployment=None):
         # and CrewAI falls through to the regular create() path.
         resp = copy.deepcopy(CHAT_REFUSAL_RESPONSE)
         resp["model"] = body.get("model", resp["model"])
+        resp["service_tier"] = _served_service_tier(body)
         return resp
 
     if (
@@ -465,16 +487,19 @@ def chat_completions(deployment=None):
         resp = copy.deepcopy(CHAT_RESPONSE)
         resp["model"] = body.get("model", resp["model"])
         resp["choices"][0]["message"]["content"] = "I drafted this plan but it is not in the requested schema."
+        resp["service_tier"] = _served_service_tier(body)
         return resp
 
     # Audio input/output: OpenAI reports per-modality (audio) token counts in usage.
     if _has_audio_input(body) or _wants_audio_output(body):
         resp = _chat_audio_response(body)
         resp["model"] = body.get("model", resp["model"])
+        resp["service_tier"] = _served_service_tier(body)
         return resp
 
     resp = copy.deepcopy(CHAT_RESPONSE)
     resp["model"] = body.get("model", resp["model"])
+    resp["service_tier"] = _served_service_tier(body)
     resp["choices"][0]["message"]["content"] = _text_protocol_tool_call(
         body, message_text
     ) or _mock_chat_content(body, message_text)
@@ -489,6 +514,33 @@ def embeddings(deployment=None):
     body = request.get_json(silent=True) or {}
     resp = copy.deepcopy(EMBEDDING_RESPONSE)
     resp["model"] = body.get("model", resp["model"])
+    # Clients batch a list in one request and index the answers back onto it
+    # positionally. A list of numbers is one input given as token ids.
+    raw_input = body.get("input")
+    if isinstance(raw_input, list) and all(
+        isinstance(entry, (str, list)) for entry in raw_input
+    ):
+        count = len(raw_input)
+    else:
+        count = 1
+    if not raw_input:
+        return {
+            "error": {
+                "type": "invalid_request_error",
+                "message": "'input' is a required property",
+            }
+        }, 400
+    default_width = len(EMBEDDING_RESPONSE["data"][0]["embedding"])
+    try:
+        width = int(body.get("dimensions") or default_width)
+    except (TypeError, ValueError):
+        width = default_width
+    vector = [0.001] * max(1, min(width, default_width * 16))
+    resp["data"] = [
+        {"object": "embedding", "index": index, "embedding": list(vector)}
+        for index in range(count)
+    ]
+    resp["usage"] = {"prompt_tokens": 8 * count, "total_tokens": 8 * count}
     return resp
 
 
