@@ -11,6 +11,11 @@ a coverage gap, so the union is all a reduction needs.
 A span becomes a span *type* through a ``classify`` callable — the registry
 declares what a type carries but not how to recognise one, so that knowledge
 belongs to the conventions, not here.
+
+Alongside what a run carried, what weaver found wrong with it: the violations
+the reports hold, deduplicated. The same gap is reported once per signal it
+appears on, and a coverage file records the gap, not how many times a run
+tripped over it.
 """
 
 from __future__ import annotations
@@ -18,7 +23,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Mapping, cast
+from typing import TYPE_CHECKING, Callable, Iterable, Mapping, cast
 
 if TYPE_CHECKING:
     from ._spec import PackageSpec, ScenarioSpec
@@ -30,6 +35,38 @@ _Json = Mapping[str, object]
 Carried = dict[str, "set[str]"]
 
 
+# The weaver advice level a coverage file records as a finding.
+_RECORDED_LEVEL = "violation"
+
+
+@dataclass(frozen=True)
+class Finding:
+    """One thing weaver said, independent of how often it said it.
+
+    ``context`` is kept serialised so two findings with the same message about
+    different attributes stay apart, and so a finding is hashable.
+    """
+
+    id: str
+    message: str
+    context: str
+
+    def sort_key(self) -> tuple[str, str, str]:
+        return (self.message, self.id, self.context)
+
+    def as_dict(self) -> dict[str, object]:
+        """The finding as a coverage file records it.
+
+        ``context`` is left out when weaver reported none, rather than
+        committed as a null.
+        """
+        recorded: dict[str, object] = {"id": self.id, "message": self.message}
+        context = cast("object", json.loads(self.context))
+        if context is not None:
+            recorded["context"] = context
+        return recorded
+
+
 @dataclass
 class Observed:
     """Every signal a run produced, keyed by span type, metric or event name."""
@@ -37,6 +74,46 @@ class Observed:
     spans: Carried = field(default_factory=dict[str, "set[str]"])
     metrics: Carried = field(default_factory=dict[str, "set[str]"])
     events: Carried = field(default_factory=dict[str, "set[str]"])
+    findings: "set[Finding]" = field(default_factory=set["Finding"])
+
+
+def collect_findings(document: object) -> set[Finding]:
+    """Every violation anywhere in a report.
+
+    Weaver attaches advice to whatever it checked — a span, an attribute, a
+    resource — so the report is walked rather than read at known keys.
+    """
+    found: set[Finding] = set()
+    if isinstance(document, dict):
+        owner = cast(_Json, document)
+        result = _mapping(owner.get("live_check_result"))
+        for entry in _list(result.get("all_advice")):
+            advice = _mapping(entry)
+            if advice.get("level") != _RECORDED_LEVEL:
+                continue
+            found.add(
+                Finding(
+                    id=str(advice.get("id") or ""),
+                    message=str(advice.get("message") or ""),
+                    context=json.dumps(
+                        cast("object", advice.get("context")), sort_keys=True
+                    ),
+                )
+            )
+        for value in owner.values():
+            found |= collect_findings(value)
+    elif isinstance(document, list):
+        for item in cast("list[object]", document):
+            found |= collect_findings(item)
+    return found
+
+
+def finding_list(findings: Iterable[Finding]) -> list[dict[str, object]]:
+    """Findings as a coverage file records them, in a stable committed order."""
+    return [
+        finding.as_dict()
+        for finding in sorted(findings, key=Finding.sort_key)
+    ]
 
 
 def read(
@@ -54,6 +131,7 @@ def read(
             continue
         document = cast(_Json, report)
         _merge_counted(counted, _mapping(document.get("statistics")))
+        observed.findings |= collect_findings(document)
         scenario_spec = spec.scenarios.get(path.stem) if spec else None
         for sample in _list(document.get("samples")):
             _read_sample(observed, sample, classify, scenario_spec)
