@@ -24,6 +24,20 @@
       "schedule": [
         "before 8am on Tuesday"
       ]
+    },
+    {
+      // group all non-major Java dependency updates into a single PR
+      "matchManagers": ["gradle"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "java-minor"
+    },
+    {
+      // Everything under this Maven group ships only `-alpha` versions, so
+      // Renovate's default of skipping unstable versions would never update it.
+      "matchPackageNames": [
+        "io.opentelemetry.instrumentation:**"
+      ],
+      "ignoreUnstable": false
     }
   ],
   "customManagers": [
