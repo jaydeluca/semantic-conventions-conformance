@@ -1,18 +1,16 @@
 [project]
-name = "openai-langchain-conformance"
+name = "agno-opentelemetry-conformance"
 version = "0.0.0"
 requires-python = ">=3.12"
 dependencies = [
-    # `instruments` names `langchain`, so zero-code skips the instrumentation
-    # when only langchain-openai is installed.
-    "langchain==1.3.15",
-    "langchain-openai==1.5.2",
+    "agno==2.9.0",
+    "openai==2.54.0",
     "opentelemetry-api==1.44.0",
     "opentelemetry-sdk==1.44.0",
     "opentelemetry-exporter-otlp-proto-grpc==1.44.0",
     "opentelemetry-distro==0.65b0",
     "opentelemetry-util-genai==1.1b0",
-    "opentelemetry-instrumentation-genai-langchain==1.1b1",
+    "opentelemetry-instrumentation-genai-agno==1.1b0",
 ]
 
 [tool.uv]
