@@ -33,7 +33,6 @@ def _one_domain(monkeypatch: pytest.MonkeyPatch) -> None:
         coverage_model = MODEL
 
     monkeypatch.setattr(_aggregate, "load_domain", lambda _name: Stub())
-    monkeypatch.setattr(_cli, "load_domain", lambda _name: Stub())
 
 
 def build_into(root: Path) -> Path:

@@ -25,10 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The time axis is replayed out of git: every commit that touched a
-          # reduction is a point on it, so a shallow clone would publish a
-          # chart that starts at whatever depth the default happened to be.
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
@@ -74,11 +70,6 @@ jobs:
       # a protected branch) would otherwise ship a report nothing gated.
       - name: Check the committed report is up to date
         run: otel-conformance-report check
-
-      # Never committed — see the note in .gitignore. Written straight into
-      # the directory being uploaded.
-      - name: Replay the time axis
-        run: otel-conformance-report history
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

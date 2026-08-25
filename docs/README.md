@@ -17,7 +17,6 @@ could disagree with it.
 | `assets/ui.js` | the element helpers |
 | `assets/views/` | one module per route |
 | `data/conformance.json` | committed, written by `otel-conformance-report build` |
-| `data/history.json` | **not** committed, written at publish time |
 
 ## Locally
 
@@ -28,29 +27,20 @@ The page reads its data over `fetch`, which a browser refuses to do from a
 python -m http.server -d docs
 ```
 
-`history.json` is absent from a fresh checkout by design — it is replayed out
-of git rather than stored, so committing it would publish a timeline that is
-always one commit stale. To have it locally, ask for it:
-
-```sh
-otel-conformance-report history
-```
-
-It needs weaver and the fetched registries, the same as a build does. See
-[the report tool's README](../tools/report/README.md).
+That is the whole of it — the committed `conformance.json` is already in the
+checkout, so nothing needs building first. See
+[the report tool's README](../tools/report/README.md) for how that file is
+produced.
 
 ## Publishing
 
 [`.github/workflows/pages.yml`](../.github/workflows/pages.yml), on every push
-to `main`. It replays the time axis, uploads `docs/` whole, and deploys.
+to `main`. It uploads `docs/` whole and deploys.
 
 It publishes the *committed* `conformance.json` rather than a fresh build, so
 what the site shows is the file a pull request gated — the same bytes, not a
 rebuild that happens to agree. The `check` in that workflow only refuses to
 publish a stale one, for a commit that reached `main` without CI having run.
-
-The replay needs the full history — `fetch-depth: 0` — because every commit
-that touched a reduction is a point on the chart.
 
 One repository setting is not in the workflow: **Settings → Pages → Build and
 deployment → Source** must be *GitHub Actions*. A deploy against the default

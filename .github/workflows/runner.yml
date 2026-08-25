@@ -339,9 +339,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Deep, for the two steps that read history rather than the tree:
-          # the replay the publish runs, and the base report the summary
-          # diffs against.
+          # Deep, for the one step that reads git rather than the tree: the
+          # base report the summary diffs against.
           fetch-depth: 0
           persist-credentials: false
 
@@ -384,12 +383,6 @@ jobs:
 
       - name: Check the committed report is up to date
         run: otel-conformance-report check
-
-      # Exercised here rather than only at publish: the replay is the one part
-      # of the tool the committed report does not cover, so a break in it
-      # would otherwise surface as a failed deploy of main.
-      - name: Replay the time axis
-        run: otel-conformance-report history --out "$RUNNER_TEMP/history.json"
 
       # What moved, not only where things stand. `github.base_ref` is empty
       # off a pull request, and the base may predate the report, so a missing

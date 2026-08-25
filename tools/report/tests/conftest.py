@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -104,21 +103,3 @@ def checkout(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def git(root: Path, *arguments: str) -> str:
-    return subprocess.run(
-        ("git", *arguments),
-        cwd=root,
-        check=True,
-        capture_output=True,
-        text=True,
-        env={
-            "GIT_AUTHOR_NAME": "t",
-            "GIT_AUTHOR_EMAIL": "t@example.invalid",
-            "GIT_COMMITTER_NAME": "t",
-            "GIT_COMMITTER_EMAIL": "t@example.invalid",
-            "GIT_CONFIG_GLOBAL": "/dev/null",
-            "GIT_CONFIG_SYSTEM": "/dev/null",
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
-            "HOME": str(root),
-        },
-    ).stdout

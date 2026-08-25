@@ -12,7 +12,6 @@ result, so the site needs neither weaver nor a registry.
 ```sh
 uv run otel-conformance-report build    # write docs/data/conformance.json
 uv run otel-conformance-report check    # fail if a rebuild would differ
-uv run otel-conformance-report history  # replay the time axis out of git
 uv run otel-conformance-report markdown # summarise for a job summary
 ```
 
@@ -20,10 +19,6 @@ uv run otel-conformance-report markdown # summarise for a job summary
 `check` gates the committed file byte-for-byte, and because the ecosystem
 registry downstream content-addresses what it ingests. A rebuild that only
 reorders a list is a failing build.
-
-`history` output is **never committed**. A file built from history can only
-describe the commits before the one it would be committed in, so committing it
-would publish a timeline that is always one commit stale.
 
 ## How to read the numbers
 

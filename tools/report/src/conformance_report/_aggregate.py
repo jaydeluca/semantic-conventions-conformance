@@ -87,10 +87,6 @@ def signal_coverage(
 ) -> list[dict[str, Any]]:
     """Each signal the run recorded, against what the registry declares.
 
-    Shared with the timeline replay, which scores historical reductions the
-    same way this scores the current one — the two must agree, or a point and
-    the report it should end at disagree about the same run.
-
     A signal the model does not declare keeps ``declared: null`` rather than
     being dropped or scored zero. A reduction only records registry-declared
     signals, so this is not reachable from a matching pin — but a report may

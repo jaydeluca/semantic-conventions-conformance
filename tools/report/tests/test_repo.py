@@ -96,7 +96,7 @@ def test_a_fully_conforming_target_is_not_scored_down_for_opt_ins(
 def test_every_target_resolved_an_instrumentation_version(
     report: dict[str, object],
 ) -> None:
-    """The label on the time axis, and the join key for the explorer."""
+    """The join key for the explorer, and what a target is labelled by."""
     without = [
         t["id"]
         for t in targets(report)

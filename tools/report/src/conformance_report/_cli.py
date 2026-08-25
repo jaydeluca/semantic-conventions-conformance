@@ -3,9 +3,8 @@
 
 """``otel-conformance-report`` — build the report, or check the committed one.
 
-Four verbs, because the report is used four ways: written, verified in CI,
-extended with the time axis at publish time, and summarised for a human
-reading a pull request.
+Three verbs, because the report is used three ways: written, verified in CI,
+and summarised for a human reading a pull request.
 """
 
 from __future__ import annotations
@@ -16,15 +15,12 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from opentelemetry.conformance import domain as load_domain
-
-from . import _aggregate, _discover, _history, _markdown
+from . import _aggregate, _markdown
 
 # Where the committed report lives, and where the site reads it from. One
 # default in one place: the workflow, the checker and the page must agree or
 # the page loads a report nothing gated.
 DEFAULT_REPORT = Path("docs/data/conformance.json")
-DEFAULT_HISTORY = Path("docs/data/history.json")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -48,14 +44,6 @@ def _parser() -> argparse.ArgumentParser:
     verbs.add_parser(
         "check",
         help="fail if the committed report is not what a rebuild produces",
-    )
-
-    history = verbs.add_parser(
-        "history", help="replay the report's git history onto a time axis"
-    )
-    history.add_argument("--out", type=Path, default=DEFAULT_HISTORY)
-    history.add_argument(
-        "--limit", type=int, default=_history.DEFAULT_LIMIT
     )
 
     markdown = verbs.add_parser(
@@ -104,23 +92,6 @@ def cli(argv: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        return 0
-
-    if arguments.verb == "history":
-        # The current build resolves the coverage models the replay scores
-        # against, and says which runner each domain directory belongs to.
-        targets = _discover.discover(root)
-        models = {
-            domain: found.coverage_model
-            for domain, runner in _history.models_for(targets).items()
-            if (found := load_domain(runner)) is not None
-        }
-        document = _history.build(root, models, limit=arguments.limit)
-        out = arguments.out
-        _write(
-            out if out.is_absolute() else root / out,
-            _history.render(document),
-        )
         return 0
 
     document = _aggregate.build(root)
