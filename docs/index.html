@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenTelemetry semantic-convention conformance</title>
+<meta name="description" content="What OpenTelemetry instrumentations actually emit, checked against the semantic conventions.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="masthead-row">
+    <h1><span class="mark"></span>Semantic-convention conformance</h1>
+    <p class="tagline">What instrumentations actually emit, measured through Weaver live-check
+      against the pinned registries.</p>
+  </div>
+  <nav aria-label="Views">
+    <a href="#/" data-route="overview">Targets</a>
+    <a href="#/signals" data-route="signals">Signal parity</a>
+    <a href="#/attributes" data-route="attributes">Attribute adoption</a>
+    <a href="#/findings" data-route="findings">Findings</a>
+  </nav>
+</header>
+
+<main id="main">
+  <p class="loading" id="boot">Loading the report…</p>
+</main>
+
+<footer>
+  <p id="provenance"></p>
+  <p>Coverage is an observation, not a grade.
+    <a href="https://github.com/open-telemetry/semantic-conventions-conformance/blob/main/tools/report/README.md"
+       rel="noreferrer">How to read these numbers</a>.</p>
+</footer>
+
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>

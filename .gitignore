@@ -19,3 +19,9 @@ node_modules/
 # .NET: what a build writes, which the artifacts output layout collects into
 # one directory per build root.
 artifacts/
+
+# The time axis, replayed out of git at publish time. A file built from
+# history can only describe the commits before the one it would be committed
+# in, so committing it would publish a timeline that is always one commit
+# stale. See tools/report/src/conformance_report/_history.py.
+docs/data/history.json
