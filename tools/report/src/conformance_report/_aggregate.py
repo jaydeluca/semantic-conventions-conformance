@@ -97,8 +97,9 @@ def signal_coverage(
     for kind, singular in _SIGNAL_KINDS.items():
         for name, emitted in sorted(data.get(kind, {}).items()):
             entry: dict[str, Any] = {"type": singular, "name": name}
-            declared = model.get(kind, {}).get(name)
-            attributes = (declared or {}).get("attributes")
+            available: Mapping[str, Any] = model.get(kind, {})
+            declared: Mapping[str, Any] = available.get(name) or {}
+            attributes: Mapping[str, str] | None = declared.get("attributes")
             if attributes is None:
                 entry["emitted"] = sorted(emitted)
                 entry["declared"] = None
@@ -125,7 +126,10 @@ def _summary(signals: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         level: {"emitted": 0, "declared": 0} for level in SCORED_LEVELS
     }
     for signal in signals:
-        for level, tally in (signal.get("coverage") or {}).items():
+        coverage: Mapping[str, Mapping[str, int]] = (
+            signal.get("coverage") or {}
+        )
+        for level, tally in coverage.items():
             if level in totals:
                 totals[level]["emitted"] += tally["emitted"]
                 totals[level]["declared"] += tally["declared"]

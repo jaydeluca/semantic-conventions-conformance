@@ -25,6 +25,10 @@ ignore = [
 
 [tool.ruff.lint.isort]
 detect-same-package = false
+# Stdlib from 3.11, and `target-version` above is the floor the rest of
+# tools/ builds against — so say it, rather than let the one component that
+# requires 3.11 sort its import as a third-party package.
+extra-standard-library = ["tomllib"]
 known-first-party = [
   "opentelemetry",
   "conformance_report",

@@ -15,7 +15,9 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from . import _aggregate, _markdown
+from ._aggregate import build, render
+from ._markdown import render as render_summary
+from ._markdown import render_diff
 
 # Where the committed report lives, and where the site reads it from. One
 # default in one place: the workflow, the checker and the page must agree or
@@ -70,13 +72,13 @@ def cli(argv: Sequence[str] | None = None) -> int:
     root: Path = arguments.root.resolve()
 
     if arguments.verb == "build":
-        content = _aggregate.render(_aggregate.build(root))
+        content = render(build(root))
         out: Path = arguments.out
         _write(out if out.is_absolute() else root / out, content)
         return 0
 
     if arguments.verb == "check":
-        expected = _aggregate.render(_aggregate.build(root))
+        expected = render(build(root))
         committed = root / DEFAULT_REPORT
         if not committed.is_file():
             print(
@@ -94,13 +96,13 @@ def cli(argv: Sequence[str] | None = None) -> int:
             return 1
         return 0
 
-    document = _aggregate.build(root)
-    summary = _markdown.render(document)
+    document = build(root)
+    summary = render_summary(document)
     if arguments.against is not None:
         before = json.loads(
             arguments.against.read_text(encoding="utf-8")
         )
-        changes = _markdown.render_diff(before, document)
+        changes = render_diff(before, document)
         if changes:
             summary = f"{summary}\n{changes}"
     print(summary, end="")

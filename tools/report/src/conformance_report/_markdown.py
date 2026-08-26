@@ -76,7 +76,8 @@ def render(document: Mapping[str, Any]) -> str:
     ranked = sorted(targets, key=_shortfall)
     for target in ranked[:_ROWS]:
         summary = target.get("summary", {})
-        version = (target.get("versions") or {}).get("instrumentation")
+        pins: Mapping[str, Any] = target.get("versions") or {}
+        version: str | None = pins.get("instrumentation")
         lines.append(
             "| `{id}` | `{library}`{version} | {required} | {recommended} "
             "| {findings} |".format(
