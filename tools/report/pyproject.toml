@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-conformance-report"
+version = "0.1.0.dev0"
+description = "Aggregates the committed conformance coverage into one report, and the site that reads it."
+# Higher than the rest of tools/: this one reads TOML, and tomllib is stdlib
+# from 3.11. Repo-internal tooling that only runs in a checkout and in CI, so
+# it does not need the runner's floor, and a dependency to read a pin file
+# would cost more than it saves.
+requires-python = ">=3.11"
+dependencies = [
+  "opentelemetry-conformance",
+]
+
+[project.scripts]
+otel-conformance-report = "conformance_report._cli:cli"
+
+# Not on PyPI; install it editable from a checkout.
+[tool.uv.sources]
+opentelemetry-conformance = { path = "../runner", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/conformance_report"]

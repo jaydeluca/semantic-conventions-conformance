@@ -1,0 +1,92 @@
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+  # So a site fix can be published without a commit that touches the report.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one mid-flight: the queued run always
+# carries the newer content, so letting the running one finish costs a minute,
+# where cancelling it can leave the site on a half-uploaded artifact.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      # Both verbs below score against a resolved coverage model, which is
+      # weaver's resolution of the pinned registry rather than a committed
+      # file.
+      - name: Install weaver
+        run: |
+          . tools/runner/src/opentelemetry/conformance/versions.env
+          url="https://github.com/open-telemetry/weaver/releases/download"
+          curl -fsSL \
+            "$url/$WEAVER_VERSION/weaver-x86_64-unknown-linux-gnu.tar.xz" \
+            | sudo tar -xJ -C /usr/local/bin --strip-components=1 \
+              --wildcards '*/weaver'
+          weaver --version
+
+      - name: Cache the semconv registries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/otel-conformance/semconv
+          key: semconv-${{ hashFiles('tools/**/versions.env') }}
+
+      - name: Install the report tool
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            -e tools/runner \
+            -e tools/gen-ai/mock-server \
+            -e tools/gen-ai/runner \
+            -e tools/http/mock-server \
+            -e tools/http/test-client/python \
+            -e tools/http/runner \
+            -e tools/report
+
+      # The site publishes the committed report rather than a fresh build, so
+      # what it shows is the file the pull request gated and the ecosystem
+      # registry content-addresses. This only refuses to publish a stale one:
+      # a run that reached main without the check (an admin merge, a push to
+      # a protected branch) would otherwise ship a report nothing gated.
+      - name: Check the committed report is up to date
+        run: otel-conformance-report check
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write # to publish to Pages
+      id-token: write # to prove to Pages the artifact came from this run
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

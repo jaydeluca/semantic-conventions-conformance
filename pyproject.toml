@@ -25,8 +25,14 @@ ignore = [
 
 [tool.ruff.lint.isort]
 detect-same-package = false
+# Stdlib from 3.11, and `target-version` above is the floor the rest of
+# tools/ builds against — so say it, rather than let the one component that
+# requires 3.11 sort its import as a third-party package.
+extra-standard-library = ["tomllib"]
 known-first-party = [
   "opentelemetry",
+  "conformance_report",
+  "conftest",
   "genai_conformance",
   "genai_mock_server",
   "http_conformance",
@@ -48,6 +54,7 @@ pythonVersion = "3.10"
 # nothing the JSON literals next to them don't.
 include = [
   "tools/runner/src",
+  "tools/report/src",
   "tools/gen-ai/runner/src",
   "tools/http/runner/src",
   "tools/http/mock-server/src",
