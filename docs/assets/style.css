@@ -137,18 +137,25 @@ h2 { font-size: 1.15rem; font-weight: 620; margin: 0 0 .2rem; letter-spacing: -0
 }
 
 .toolbar {
-  display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+  display: flex; flex-direction: column; gap: .45rem; align-items: stretch;
   margin: 0 0 1rem; padding: .7rem; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius);
 }
+.toolbar-row { display: flex; gap: .5rem; align-items: center; }
 .toolbar input[type="search"], .toolbar select {
   font: inherit; font-size: .875rem; padding: .34rem .5rem;
   border: 1px solid var(--line-strong); border-radius: 4px;
   background: var(--bg); color: var(--ink);
 }
-.toolbar input[type="search"] { flex: 1 1 15rem; min-width: 9rem; }
-.toolbar label { font-size: .8rem; color: var(--ink-2); display: flex; gap: .35rem; align-items: center; }
-.count { color: var(--ink-3); font-size: .8rem; margin-left: auto; }
+.toolbar input[type="search"] { flex: 1 1 auto; min-width: 9rem; }
+.toolbar label {
+  font-size: .8rem; color: var(--ink-2);
+  display: flex; gap: .5rem; align-items: center;
+}
+/* One column for the names, so the selects line up down the left edge. */
+.toolbar label > span { flex: 0 0 4.5rem; }
+.toolbar label select { flex: 1 1 auto; min-width: 0; max-width: 26rem; }
+.count { color: var(--ink-3); font-size: .8rem; margin-left: auto; white-space: nowrap; }
 
 .scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 /* A grid of fixed-width cells has a natural width, and stretching it to the

@@ -64,8 +64,15 @@ export default function signals(data, key) {
         ],
       },
       {
+        key: 'language',
+        label: 'Language',
+        all: 'All languages',
+        options: [...new Set(chosen.rows.map((row) => row.target.language))].sort(),
+      },
+      {
         key: 'library',
         label: 'Library',
+        all: 'All libraries',
         options: [
           ...new Set(chosen.rows.map((row) => row.target.instrumented_library)),
         ].sort(),
@@ -77,6 +84,7 @@ export default function signals(data, key) {
         return '';
       }
       const rows = chosen.rows.filter((row) => {
+        if (state.language && row.target.language !== state.language) return false;
         if (state.library && row.target.instrumented_library !== state.library) {
           return false;
         }

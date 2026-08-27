@@ -93,10 +93,16 @@ export function toolbar({ search, filters = [], onChange }) {
     select.value = state[filter.key];
     if (select.selectedIndex < 0) select.selectedIndex = 0;
     state[filter.key] = select.value;
-    return el('label', {}, [filter.label, select]);
+    // The name in its own element so every select can start at one column.
+    return el('label', {}, [el('span', { text: filter.label }), select]);
   });
 
-  const node = el('div', { class: 'toolbar' }, [input, controls, count]);
+  // One control per line: there are enough of them now that a single wrapping
+  // row reflowed into an unreadable shape at most widths.
+  const node = el('div', { class: 'toolbar' }, [
+    el('div', { class: 'toolbar-row' }, [input, count]),
+    ...controls,
+  ]);
   emit();
   return { node, state };
 }
