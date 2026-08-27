@@ -115,6 +115,8 @@ otel-conformance scenarios/http/java/armeria/opentelemetry-javaagent/server
 otel-conformance scenarios/http/java/armeria/opentelemetry-library/client
 otel-conformance scenarios/http/java/armeria/opentelemetry-library/server
 otel-conformance scenarios/http/js/express/opentelemetry-express/server
+otel-conformance scenarios/http/js/http/opentelemetry-http/client
+otel-conformance scenarios/http/js/http/opentelemetry-http/server
 otel-conformance scenarios/http/js/undici/opentelemetry-undici/client
 otel-conformance scenarios/http/dotnet/aspnetcore/opentelemetry-aspnetcore/server
 otel-conformance scenarios/http/dotnet/httpclient/opentelemetry-http/client
