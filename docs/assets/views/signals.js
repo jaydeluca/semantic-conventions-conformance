@@ -153,46 +153,30 @@ function heatmap(signal, rows, levels) {
     el('th', { class: 'tally', scope: 'col', text: 'emitted by' }),
   ]);
 
-  const body = el('tbody');
   const grouped = new Map(levels.map((level) => [level, []]));
   for (const [attribute, level] of Object.entries(signal.attributes)) {
     if (grouped.has(level)) grouped.get(level).push(attribute);
   }
 
+  // A level heading heads the rows under it, not a set of columns, so each
+  // level is its own row group and the heading is that group's header.
+  const groups = [];
   let drawn = 0;
   for (const level of levels) {
     const attributes = (grouped.get(level) ?? []).sort();
     if (!attributes.length) continue;
-    body.append(
-      el('tr', { class: 'level-head' }, [
-        el('th', { colspan: columns.length + 2, scope: 'colgroup' }, [
-          el('i', { style: `background:${levelColor(level)}` }),
-          `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
+    groups.push(
+      el('tbody', {}, [
+        el('tr', { class: 'level-head' }, [
+          el('th', { colspan: columns.length + 2, scope: 'rowgroup' }, [
+            el('i', { style: `background:${levelColor(level)}` }),
+            `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
+          ]),
         ]),
+        ...attributes.map((attribute) => attributeRow(attribute, columns)),
       ]),
     );
-    for (const attribute of attributes) {
-      const emitted = columns.map((row) => row.signal.emitted.includes(attribute));
-      const count = emitted.filter(Boolean).length;
-      body.append(
-        el('tr', {}, [
-          el('th', { class: 'attr', scope: 'row', text: attribute }),
-          ...emitted.map((yes, i) =>
-            el('td', { class: `cell ${yes ? 'cell-yes' : 'cell-no'}` }, [
-              el('span', {
-                text: yes ? '•' : '',
-                title: `${fullLabel(columns[i].target)} ${yes ? 'emits' : 'does not emit'} ${attribute}`,
-              }),
-            ]),
-          ),
-          el('td', {
-            class: 'num rowcount',
-            text: `${count}/${columns.length}`,
-          }),
-        ]),
-      );
-      drawn += 1;
-    }
+    drawn += attributes.length;
   }
 
   if (!drawn) {
@@ -208,10 +192,28 @@ function heatmap(signal, rows, levels) {
     el('div', { class: 'scroller fit' }, [
       el('table', { class: `heatmap${bands ? ' banded' : ''}` }, [
         el('thead', {}, [bands, header]),
-        body,
+        ...groups,
       ]),
     ]),
     levelLegend(levels),
+  ]);
+}
+
+/** One attribute, across every column, and how many of them carried it. */
+function attributeRow(attribute, columns) {
+  const emitted = columns.map((row) => row.signal.emitted.includes(attribute));
+  const count = emitted.filter(Boolean).length;
+  return el('tr', {}, [
+    el('th', { class: 'attr', scope: 'row', text: attribute }),
+    ...emitted.map((yes, i) =>
+      el('td', { class: `cell ${yes ? 'cell-yes' : 'cell-no'}` }, [
+        el('span', {
+          text: yes ? '•' : '',
+          title: `${fullLabel(columns[i].target)} ${yes ? 'emits' : 'does not emit'} ${attribute}`,
+        }),
+      ]),
+    ),
+    el('td', { class: 'num rowcount', text: `${count}/${columns.length}` }),
   ]);
 }
 

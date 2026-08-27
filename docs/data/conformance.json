@@ -640,11 +640,6 @@
           "emitted": [
             "gen_ai.operation.name"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.provider.name",
@@ -824,29 +819,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.provider.name",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.stop_sequences",
-              "gen_ai.request.stream",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.response.time_to_first_chunk",
-              "gen_ai.system_instructions",
-              "gen_ai.usage.cache_creation.input_tokens",
-              "gen_ai.usage.cache_read.input_tokens",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -893,16 +865,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "error.type"
           ],
@@ -931,15 +893,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "gen_ai.response.model"
           ],
@@ -968,15 +921,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "gen_ai.response.model"
           ],
@@ -1007,17 +951,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [],
           "name": "gen_ai.client.token.usage",
           "type": "metric"
@@ -1216,27 +1149,6 @@
             "gen_ai.usage.input_tokens",
             "gen_ai.usage.output_tokens"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.provider.name",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.stop_sequences",
-              "gen_ai.request.temperature",
-              "gen_ai.request.top_p",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.tool.definitions",
-              "gen_ai.usage.cache_creation.input_tokens",
-              "gen_ai.usage.cache_read.input_tokens",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -1283,14 +1195,6 @@
             "gen_ai.request.model",
             "gen_ai.response.model"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model"
-            ]
-          },
           "missing": [
             "error.type",
             "server.address",
@@ -1321,15 +1225,6 @@
             "gen_ai.response.model",
             "gen_ai.token.type"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -1650,14 +1545,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.request.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.provider.name",
@@ -1688,15 +1575,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.request.model",
-              "gen_ai.token.type",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "gen_ai.provider.name",
             "gen_ai.response.model"
@@ -2035,34 +1913,6 @@
             "gen_ai.usage.reasoning.output_tokens",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.output.type",
-              "gen_ai.provider.name",
-              "gen_ai.request.frequency_penalty",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.presence_penalty",
-              "gen_ai.request.seed",
-              "gen_ai.request.stop_sequences",
-              "gen_ai.request.temperature",
-              "gen_ai.request.top_p",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.response.time_to_first_chunk",
-              "gen_ai.system_instructions",
-              "gen_ai.tool.definitions",
-              "gen_ai.usage.cache_read.input_tokens",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens",
-              "gen_ai.usage.reasoning.output_tokens",
-              "server.address"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -2103,15 +1953,6 @@
             "gen_ai.response.model",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "server.address"
-            ]
-          },
           "missing": [
             "error.type",
             "server.port"
@@ -2140,14 +1981,6 @@
             "gen_ai.request.model",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "server.address"
-            ]
-          },
           "missing": [
             "gen_ai.response.model",
             "server.port"
@@ -2176,14 +2009,6 @@
             "gen_ai.request.model",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "server.address"
-            ]
-          },
           "missing": [
             "gen_ai.response.model",
             "server.port"
@@ -2214,16 +2039,6 @@
             "gen_ai.token.type",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type",
-              "server.address"
-            ]
-          },
           "missing": [
             "server.port"
           ],
@@ -2478,23 +2293,6 @@
             "gen_ai.usage.input_tokens",
             "gen_ai.usage.output_tokens"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.provider.name",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.temperature",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.tool.definitions",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -2545,14 +2343,6 @@
             "gen_ai.request.model",
             "gen_ai.response.model"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model"
-            ]
-          },
           "missing": [
             "error.type",
             "server.address",
@@ -2583,15 +2373,6 @@
             "gen_ai.response.model",
             "gen_ai.token.type"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -3700,14 +3481,6 @@
             "gen_ai.response.model",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.response.model",
-              "server.address"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.request.model",
@@ -3738,15 +3511,6 @@
             "gen_ai.token.type",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.response.model",
-              "gen_ai.token.type",
-              "server.address"
-            ]
-          },
           "missing": [
             "gen_ai.request.model",
             "server.port"
@@ -3775,14 +3539,6 @@
             "gen_ai.response.model",
             "server.address"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.response.model",
-              "server.address"
-            ]
-          },
           "missing": [
             "gen_ai.request.model",
             "server.port"
@@ -4022,28 +3778,6 @@
             "gen_ai.usage.input_tokens",
             "gen_ai.usage.output_tokens"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.provider.name",
-              "gen_ai.request.frequency_penalty",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.presence_penalty",
-              "gen_ai.request.seed",
-              "gen_ai.request.stop_sequences",
-              "gen_ai.request.temperature",
-              "gen_ai.request.top_p",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.tool.definitions",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -4089,14 +3823,6 @@
             "gen_ai.request.model",
             "gen_ai.response.model"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model"
-            ]
-          },
           "missing": [
             "error.type",
             "server.address",
@@ -4127,15 +3853,6 @@
             "gen_ai.response.model",
             "gen_ai.token.type"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -4366,33 +4083,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.input.messages",
-              "gen_ai.operation.name",
-              "gen_ai.output.messages",
-              "gen_ai.output.type",
-              "gen_ai.provider.name",
-              "gen_ai.request.frequency_penalty",
-              "gen_ai.request.max_tokens",
-              "gen_ai.request.model",
-              "gen_ai.request.presence_penalty",
-              "gen_ai.request.seed",
-              "gen_ai.request.stop_sequences",
-              "gen_ai.request.stream",
-              "gen_ai.request.temperature",
-              "gen_ai.request.top_p",
-              "gen_ai.response.finish_reasons",
-              "gen_ai.response.id",
-              "gen_ai.response.model",
-              "gen_ai.response.time_to_first_chunk",
-              "gen_ai.tool.definitions",
-              "gen_ai.usage.input_tokens",
-              "gen_ai.usage.output_tokens",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.conversation.compacted",
@@ -4435,16 +4125,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "error.type"
           ],
@@ -4474,16 +4154,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [],
           "name": "gen_ai.client.operation.time_per_output_chunk",
           "type": "metric"
@@ -4511,16 +4181,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [],
           "name": "gen_ai.client.operation.time_to_first_chunk",
           "type": "metric"
@@ -4549,17 +4209,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name",
-              "gen_ai.request.model",
-              "gen_ai.response.model",
-              "gen_ai.token.type",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [],
           "name": "gen_ai.client.token.usage",
           "type": "metric"
@@ -4784,12 +4433,6 @@
             "gen_ai.operation.name",
             "gen_ai.provider.name"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.provider.name"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.request.model",
@@ -5023,12 +4666,6 @@
             "gen_ai.operation.name",
             "gen_ai.request.model"
           ],
-          "identity": {
-            "attributes": [
-              "gen_ai.operation.name",
-              "gen_ai.request.model"
-            ]
-          },
           "missing": [
             "error.type",
             "gen_ai.provider.name",
@@ -5221,12 +4858,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -5260,15 +4891,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -5410,11 +5032,6 @@
           "emitted": [
             "dns.question.name"
           ],
-          "identity": {
-            "attributes": [
-              "dns.question.name"
-            ]
-          },
           "missing": [
             "error.type"
           ],
@@ -5446,14 +5063,6 @@
             "server.port",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "server.address",
-              "server.port",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "url.template"
           ],
@@ -5482,15 +5091,6 @@
             "server.port",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "network.peer.address",
-              "network.protocol.version",
-              "server.address",
-              "server.port",
-              "url.scheme"
-            ]
-          },
           "missing": [],
           "name": "http.client.connection.duration",
           "type": "metric"
@@ -5518,16 +5118,6 @@
             "server.port",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.connection.state",
-              "network.peer.address",
-              "network.protocol.version",
-              "server.address",
-              "server.port",
-              "url.scheme"
-            ]
-          },
           "missing": [],
           "name": "http.client.open_connections",
           "type": "metric"
@@ -5560,17 +5150,6 @@
             "server.port",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.template"
@@ -5787,16 +5366,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -5966,16 +5535,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -6144,16 +5703,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -6324,16 +5873,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -6513,16 +6052,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -6671,16 +6200,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -6837,16 +6356,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -7018,16 +6527,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -7205,15 +6704,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",
@@ -7395,16 +6885,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -7574,16 +7054,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -7752,16 +7222,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -7941,16 +7401,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -8120,16 +7570,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -8298,16 +7738,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -8478,16 +7908,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -8665,15 +8085,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",
@@ -8846,16 +8257,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -9073,16 +8474,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -9271,15 +8662,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "network.protocol.version",
@@ -9460,16 +8842,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -9641,16 +9013,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -9830,16 +9192,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -10020,16 +9372,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -10218,15 +9560,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "network.protocol.version",
@@ -10407,16 +9740,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -10597,16 +9920,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -10785,15 +10098,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",
@@ -10966,16 +10270,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -11240,16 +10534,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -11437,15 +10721,6 @@
             "server.port",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "server.address",
-              "server.port",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -11617,15 +10892,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "network.protocol.version",
@@ -11815,12 +11081,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -11855,16 +11115,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -12155,12 +11405,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -12193,14 +11437,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "http.route",
@@ -12238,15 +11474,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",
@@ -12283,15 +11510,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",
@@ -12443,12 +11661,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -12483,16 +11695,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -12690,12 +11892,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -12730,16 +11926,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -12963,12 +12149,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -13002,15 +12182,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -13048,16 +12219,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -13094,16 +12255,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -13254,12 +12405,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -13294,16 +12439,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -13458,16 +12593,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -13658,12 +12783,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -13696,14 +12815,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "http.route",
@@ -13861,16 +12972,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -14093,12 +13194,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -14132,15 +13227,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -14178,16 +13264,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -14224,16 +13300,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -14469,12 +13535,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -14508,15 +13568,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -14553,15 +13604,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -14598,15 +13640,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "http.response.status_code",
-              "http.route",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "error.type",
             "network.protocol.name",
@@ -14892,14 +13925,6 @@
             "http.response.status_code",
             "network.protocol.version"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -14935,14 +13960,6 @@
             "http.response.status_code",
             "network.protocol.version"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -14978,14 +13995,6 @@
             "http.response.status_code",
             "network.protocol.version"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "server.address",
@@ -15197,16 +14206,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -15242,16 +14241,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -15287,16 +14276,6 @@
             "server.address",
             "server.port"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "server.address",
-              "server.port"
-            ]
-          },
           "missing": [
             "network.protocol.name",
             "url.scheme",
@@ -15496,12 +14475,6 @@
             "http.request.method",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "http.request.method",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "server.address",
             "server.port"
@@ -15535,15 +14508,6 @@
             "network.protocol.version",
             "url.scheme"
           ],
-          "identity": {
-            "attributes": [
-              "error.type",
-              "http.request.method",
-              "http.response.status_code",
-              "network.protocol.version",
-              "url.scheme"
-            ]
-          },
           "missing": [
             "http.route",
             "network.protocol.name",

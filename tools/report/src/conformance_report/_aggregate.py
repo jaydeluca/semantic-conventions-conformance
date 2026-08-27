@@ -36,6 +36,23 @@ _SIGNAL_KINDS = {"spans": "span", "events": "event", "metrics": "metric"}
 SCORED_LEVELS = ("required", "recommended")
 
 
+def _runner(target: Target) -> str:
+    """The runner a target declared, which the report cannot do without.
+
+    ``runner:`` is optional to the runner itself — a caller may supply the
+    runners instead — but it is the only thing that names the registry the
+    coverage denominator comes from. Without one there is nothing to score
+    against, and a report published anyway would read as a target that
+    declares nothing rather than as one that was never measured.
+    """
+    if target.runner is None:
+        raise RuntimeError(
+            f"{target.path} declares no `runner:` — the report cannot tell "
+            "what registry it was measured against, so it has no denominator"
+        )
+    return target.runner
+
+
 def _domains(targets: Iterable[Target]) -> dict[str, Domain]:
     """The domain behind each ``runner:`` the targets name.
 
@@ -44,8 +61,8 @@ def _domains(targets: Iterable[Target]) -> dict[str, Domain]:
     """
     resolved: dict[str, Domain] = {}
     for target in targets:
-        name = target.runner
-        if name is None or name in resolved:
+        name = _runner(target)
+        if name in resolved:
             continue
         found = load_domain(name)
         if found is None:
@@ -98,12 +115,16 @@ def signal_coverage(
                 continue
             entry["missing"] = sorted(set(attributes) - set(emitted))
             entry["coverage"] = _coverage(attributes, emitted)
-            # The identity the ecosystem explorer keys telemetry on: spans by
-            # kind and attribute set, metrics and events by name alone.
-            identity: dict[str, Any] = {"attributes": sorted(emitted)}
+            # The identity the ecosystem explorer keys telemetry on. A span is
+            # keyed by kind and attribute set — two shapes under one name are
+            # two spans there. A metric or event is keyed by name alone, which
+            # ``name`` above already carries: giving one an attribute set would
+            # split two observations of the same metric into two identities.
             if singular == "span":
-                identity["span_kind"] = declared.get("kind")
-            entry["identity"] = identity
+                entry["identity"] = {
+                    "attributes": sorted(emitted),
+                    "span_kind": declared.get("kind"),
+                }
             built.append(entry)
     return built
 
@@ -171,9 +192,8 @@ def build(root: Path) -> dict[str, Any]:
     built: list[dict[str, Any]] = []
     for target in targets:
         data = reductions[target.id]
-        found = domains.get(target.runner or "")
-        model: Mapping[str, Any] = found.coverage_model if found else {}
-        signals = signal_coverage(data, model)
+        found = domains[_runner(target)]
+        signals = signal_coverage(data, found.coverage_model)
         built.append(
             {
                 "id": target.id,

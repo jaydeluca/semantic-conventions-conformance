@@ -102,13 +102,21 @@ def render(document: Mapping[str, Any]) -> str:
 
 
 def render_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> str:
-    """What changed between two reports, or nothing if they agree."""
+    """What changed between two reports, or nothing if they agree.
+
+    Both halves of a coverage ratio, not only the numerator: moving a registry
+    pin changes what the registry declares with no instrumentation having
+    changed, and that denominator-only move is the whole reason the report is
+    rebuilt when a pin moves. A diff that only compared emitted attributes
+    would open that pull request with nothing to say. See the README.
+    """
 
     def index(document: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
         return {t["id"]: t for t in document.get("targets", [])}
 
     old, new = index(before), index(after)
-    changes: list[str] = []
+    # First, so the cap below can never drop the change that explains the rest.
+    changes: list[str] = list(_registry_diff(before, after))
     for target_id in sorted(set(old) | set(new)):
         if target_id not in old:
             changes.append(f"- added `{target_id}`")
@@ -125,28 +133,92 @@ def render_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> str:
     return "\n".join(["### Conformance changes", "", *shown]) + "\n"
 
 
-def _emitted(target: Mapping[str, Any]) -> dict[str, set[str]]:
-    return {
-        f"{s['type']} {s['name']}": set(s.get("emitted", []))
-        for s in target.get("signals", [])
-    }
+def _registry_diff(
+    before: Mapping[str, Any], after: Mapping[str, Any]
+) -> Iterable[str]:
+    """Which pin moved: one ref moves every denominator underneath it."""
+    old: Mapping[str, Mapping[str, Any]] = before.get("domains", {})
+    new: Mapping[str, Mapping[str, Any]] = after.get("domains", {})
+    for name in sorted(set(old) | set(new)):
+        was, now = old.get(name), new.get(name)
+        if was == now:
+            continue
+        if now is None:
+            yield f"- registry `{name}` removed"
+            continue
+        if was is None:
+            yield f"- registry `{name}` added at `{now['registry_ref']}`"
+            continue
+        for field in ("registry_repo", "registry_ref", "registry_dir"):
+            if was.get(field) != now.get(field):
+                what = field.removeprefix("registry_")
+                yield (
+                    f"- registry `{name}` {what} `{was.get(field)}` → "
+                    f"`{now.get(field)}`"
+                )
+
+
+def _signals(target: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    return {f"{s['type']} {s['name']}": s for s in target.get("signals", [])}
+
+
+def _declared(signal: Mapping[str, Any]) -> dict[str, int] | None:
+    """How many attributes each level declares: the ratio's denominator.
+
+    ``None`` where the pinned registry declares nothing for the signal, which
+    is "unknown" rather than "none" — the same distinction the report draws.
+    """
+    coverage: Mapping[str, Mapping[str, int]] | None = signal.get("coverage")
+    if coverage is None:
+        return None
+    return {level: tally["declared"] for level, tally in coverage.items()}
+
+
+def _signal_diff(
+    target_id: str,
+    signal: str,
+    old: Mapping[str, Any],
+    new: Mapping[str, Any],
+) -> Iterable[str]:
+    old_emitted = set(old.get("emitted", []))
+    new_emitted = set(new.get("emitted", []))
+    for attribute in sorted(new_emitted - old_emitted):
+        yield f"- `{target_id}` `{signal}` **+** `{attribute}`"
+    for attribute in sorted(old_emitted - new_emitted):
+        yield f"- `{target_id}` `{signal}` **−** `{attribute}`"
+
+    # A pin move can change what the registry declares without any run having
+    # changed: the denominator moves on its own.
+    was, now = _declared(old), _declared(new)
+    if was is None and now is None:
+        return
+    if was is None or now is None:
+        state = "now" if was is None else "no longer"
+        yield f"- `{target_id}` `{signal}` {state} declared by the registry"
+        return
+    for level in sorted(set(was) | set(now)):
+        if was.get(level, 0) != now.get(level, 0):
+            yield (
+                f"- `{target_id}` `{signal}` `{level}` declared "
+                f"{was.get(level, 0)} → {now.get(level, 0)}"
+            )
 
 
 def _target_diff(
     target_id: str, old: Mapping[str, Any], new: Mapping[str, Any]
 ) -> Iterable[str]:
-    old_attributes, new_attributes = _emitted(old), _emitted(new)
-    for signal in sorted(set(old_attributes) | set(new_attributes)):
-        gained = new_attributes.get(signal, set()) - old_attributes.get(
-            signal, set()
-        )
-        lost = old_attributes.get(signal, set()) - new_attributes.get(
-            signal, set()
-        )
-        for attribute in sorted(gained):
-            yield f"- `{target_id}` `{signal}` **+** `{attribute}`"
-        for attribute in sorted(lost):
-            yield f"- `{target_id}` `{signal}` **−** `{attribute}`"
+    was, now = _signals(old), _signals(new)
+    for signal in sorted(set(was) | set(now)):
+        before, after = was.get(signal), now.get(signal)
+        # A signal appearing or going is one line, not one per attribute: a
+        # renamed signal is every target at once, and the itemised form would
+        # be most of the cap on its own.
+        if before is None:
+            yield f"- `{target_id}` `{signal}` **added**"
+        elif after is None:
+            yield f"- `{target_id}` `{signal}` **no longer emitted**"
+        else:
+            yield from _signal_diff(target_id, signal, before, after)
 
     before = collections.Counter(
         f["id"] for f in old.get("findings", []) if "id" in f

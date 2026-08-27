@@ -81,8 +81,14 @@ def test_spans_carry_the_identity_the_explorer_keys_on() -> None:
 
 
 def test_a_metric_is_keyed_by_name_alone() -> None:
+    """No identity block at all: an attribute set would split one metric.
+
+    The explorer keys a metric by name, so two observations under one name are
+    one metric there however differently they were attributed.
+    """
     signals = coverage_of({**EMPTY, "metrics": {"demo.duration": []}})
-    assert "span_kind" not in signals["demo.duration"]["identity"]
+    assert "identity" not in signals["demo.duration"]
+    assert signals["demo.duration"]["name"] == "demo.duration"
 
 
 def test_the_summary_sums_only_the_scored_levels() -> None:
@@ -124,6 +130,17 @@ def test_an_empty_checkout_says_so(tmp_path: Path) -> None:
     (tmp_path / "scenarios").mkdir()
     with pytest.raises(RuntimeError, match="no conformance directories"):
         build(tmp_path)
+
+
+@pytest.mark.usefixtures("one_domain")
+def test_a_target_with_no_runner_is_a_failure_not_an_empty_score(
+    tmp_path: Path,
+) -> None:
+    """Publishing it would read as declaring nothing, not as unmeasured."""
+    write_target(tmp_path, "demo/python/demo/opentelemetry-demo", runner=None)
+    with pytest.raises(RuntimeError, match="declares no `runner:`") as raised:
+        build(tmp_path)
+    assert "demo/python/demo/opentelemetry-demo" in str(raised.value)
 
 
 @pytest.mark.usefixtures("one_domain")

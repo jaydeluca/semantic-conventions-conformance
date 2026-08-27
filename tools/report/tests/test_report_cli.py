@@ -124,6 +124,95 @@ def test_the_diff_names_the_attribute_that_moved() -> None:
     assert "finding `unit_mismatch` −1" in changes
 
 
+def test_the_diff_names_a_denominator_that_moved_on_its_own() -> None:
+    """A pin move changes coverage with no reduction having changed.
+
+    The nightly rebuild opens its pull request off this diff, so a
+    denominator-only move that rendered as nothing would land unexplained.
+    """
+
+    def report(declared: int, ref: str) -> dict[str, Any]:
+        return {
+            "domains": {
+                "demo-conformance": {
+                    "registry_repo": "open-telemetry/demo",
+                    "registry_ref": ref,
+                    "registry_dir": "model",
+                }
+            },
+            "targets": [
+                {
+                    "id": TARGET,
+                    "signals": [
+                        {
+                            "type": "span",
+                            "name": "demo.client",
+                            "emitted": ["demo.required"],
+                            "coverage": {
+                                "required": {
+                                    "emitted": 1,
+                                    "declared": declared,
+                                }
+                            },
+                        }
+                    ],
+                    "findings": [],
+                }
+            ],
+        }
+
+    changes = _markdown.render_diff(report(1, "v1.0.0"), report(2, "v1.1.0"))
+    # The pin first, because the cap drops from the end.
+    assert changes.splitlines()[2] == (
+        "- registry `demo-conformance` ref `v1.0.0` → `v1.1.0`"
+    )
+    assert "`required` declared 1 → 2" in changes
+
+
+def test_the_diff_names_a_signal_that_appeared() -> None:
+    """One line, not one per attribute: a rename moves every target at once."""
+    signal = {
+        "type": "metric",
+        "name": "demo.duration",
+        "emitted": ["demo.required"],
+        "coverage": {"required": {"emitted": 1, "declared": 1}},
+    }
+    target = {"id": TARGET, "signals": [], "findings": []}
+    changes = _markdown.render_diff(
+        {"targets": [target]},
+        {"targets": [{**target, "signals": [signal]}]},
+    )
+    lines = [line for line in changes.splitlines() if line.startswith("- ")]
+    assert lines == [f"- `{TARGET}` `metric demo.duration` **added**"]
+
+    gone = _markdown.render_diff(
+        {"targets": [{**target, "signals": [signal]}]},
+        {"targets": [target]},
+    )
+    assert "`metric demo.duration` **no longer emitted**" in gone
+
+
+def test_the_diff_says_when_the_registry_stopped_declaring_a_signal() -> None:
+    """Null coverage is "unknown", and worth a line of its own."""
+    emitted = {"type": "span", "name": "demo.client", "emitted": []}
+    scored = {
+        **emitted,
+        "coverage": {"required": {"emitted": 0, "declared": 1}},
+    }
+    unscored = {**emitted, "declared": None}
+
+    def report(signal: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "targets": [{"id": TARGET, "signals": [signal], "findings": []}]
+        }
+
+    changes = _markdown.render_diff(report(scored), report(unscored))
+    assert "no longer declared by the registry" in changes
+    assert "now declared by the registry" in _markdown.render_diff(
+        report(unscored), report(scored)
+    )
+
+
 def test_an_unchanged_report_has_no_diff_to_show() -> None:
     same: dict[str, Any] = {
         "targets": [{"id": TARGET, "signals": [], "findings": []}]

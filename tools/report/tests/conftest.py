@@ -14,8 +14,7 @@ import pytest
 from conformance_report import _aggregate
 
 SPEC = """\
-runner: {runner}
-instrumented_library: {library}
+{runner}instrumented_library: {library}
 instrumentation_library: {instrumentation}
 
 scenarios:
@@ -59,18 +58,22 @@ def write_target(
     root: Path,
     identifier: str,
     *,
-    runner: str = "demo-conformance",
+    runner: str | None = "demo-conformance",
     library: str = "demo",
     instrumentation: str = "opentelemetry-demo",
     scenarios: tuple[str, ...] = ("main",),
     data: dict[str, Any] | None = None,
 ) -> Path:
-    """One conformance directory under ``root/scenarios/<identifier>``."""
+    """One conformance directory under ``root/scenarios/<identifier>``.
+
+    ``runner=None`` leaves the key out, which the spec allows and the report
+    does not.
+    """
     directory = root / "scenarios" / identifier
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "conformance.yaml").write_text(
         SPEC.format(
-            runner=runner,
+            runner="" if runner is None else f"runner: {runner}\n",
             library=library,
             instrumentation=instrumentation,
             scenarios="\n".join(

@@ -42,6 +42,12 @@ rebuild does not. So the committed report — and the site, which publishes it
 verbatim — can be a day behind a merge that moved a reduction. `check` is what
 tells you locally whether that is the case.
 
+`markdown --against` renders what moved into that pull request's body: both
+halves of every ratio, not only the numerator. Attributes gained and lost,
+signals appearing and going, findings, and any registry pin that moved — a pin
+is listed first, because one moved ref is the explanation for every changed
+denominator under it.
+
 ## How to read the numbers
 
 **There is no single conformance score, on purpose.** A registry declares

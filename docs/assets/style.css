@@ -164,7 +164,10 @@ thead th {
   letter-spacing: .04em; color: var(--ink-2); white-space: nowrap;
 }
 tbody tr:hover { background: var(--surface-2); }
-tbody tr:last-child td { border-bottom: none; }
+/* The last row of the table, not of every row group: the heatmap gives each
+   requirement level its own <tbody>, and the line before the next level's
+   heading has to stay. */
+tbody:last-child tr:last-child td { border-bottom: none; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .ver { color: var(--ink-3); font-size: .8em; }
