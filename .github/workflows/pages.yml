@@ -10,9 +10,8 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time, and never cancel one mid-flight: the queued run always
-# carries the newer content, so letting the running one finish costs a minute,
-# where cancelling it can leave the site on a half-uploaded artifact.
+# Never cancel a deploy mid-flight: it can leave the site on a half-uploaded
+# artifact, and the queued run carries the newer content anyway.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -27,12 +26,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # The exact bytes, with nothing rebuilt here. `docs/data/conformance.json`
-      # is what the ecosystem registry content-addresses downstream, so the page
-      # has to show that file rather than a fresh build that happens to agree.
-      # Keeping it current is the `Report` workflow's nightly job, which means
-      # the site can sit a day behind a merge that moved a reduction — see the
-      # note at the top of report.yml for why that is the trade being made.
+      # Published verbatim, with nothing rebuilt here: the site has to show the
+      # same `docs/data/conformance.json` the ecosystem registry ingests. The
+      # `Report` workflow keeps it current — see the note at the top of it.
       - name: Upload the site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

@@ -3,12 +3,8 @@
 
 // One signal, every target that emits it, attribute by attribute.
 //
-// This is the view the individual data files cannot give you. Two
-// instrumentations of the same library, or the same instrumentation in four
-// languages, are only comparable side by side — and what makes them
-// comparable is that the rows are the registry's declaration rather than the
-// union of what anyone happened to emit, so an empty column is a real gap and
-// not a missing row.
+// The rows are the registry's declaration rather than the union of what anyone
+// happened to emit, so a blank cell is a real gap and not a missing row.
 
 import {
   LEVELS,
@@ -20,12 +16,7 @@ import {
 } from '../data.js';
 import { el, levelLegend, toolbar } from '../ui.js';
 
-/**
- * The signal a route names, and whether it named one that exists.
- *
- * Shared with `title` below so the tab and the heading cannot disagree about
- * which signal is on screen.
- */
+/** The signal a route names, and whether it named one that exists. */
 function choose(data, key) {
   const available = [...data.signals.values()].sort(
     (a, b) => b.rows.length - a.rows.length || a.name.localeCompare(b.name),
@@ -118,9 +109,7 @@ export default function signals(data, key) {
       'Signal parity: ',
       el('span', { class: 'mono', text: chosen.name }),
     ]),
-    // A link can outlive the signal it names — a registry ref that renames one
-    // is enough. Say so rather than quietly showing something else, which
-    // would read as the link having worked.
+    // A link outlives the signal it names when a registry ref renames one.
     unknown &&
       el('p', { class: 'note' }, [
         el('strong', { text: 'No such signal in this report: ' }),
@@ -227,14 +216,10 @@ function heatmap(signal, rows, levels) {
 }
 
 /**
- * One column header: the library, and only what else is needed to tell it
- * from its neighbours.
+ * One column header: the library, plus only what tells it from its neighbours.
  *
- * Two lines rather than one string, because the header is rotated — stacked,
- * the height is set by the longer line instead of by their sum, which is what
- * keeps a 23-character instrumentation name inside the band instead of
- * clipped by it. Not a link yet: there is no target page for it to reach, and
- * a header that re-rendered this same view would read as a bug.
+ * Two elements rather than one string — rotated, they sit side by side, so the
+ * header height is the longer line rather than their sum. See `style.css`.
  */
 function columnHeader(target, label) {
   const full = `${label.full} · ${target.instrumentation_library}`;
@@ -261,10 +246,8 @@ function columnHeader(target, label) {
 }
 
 /**
- * A band naming each language over the columns it covers.
- *
- * Null when they are all one language: a band that says the same thing about
- * every column is a row of chrome, and the caption already said it.
+ * A band naming each language over the columns it covers, or null when they
+ * are all one language — the caption already says that.
  */
 function languageBands(columns) {
   const groups = [];
@@ -294,10 +277,8 @@ function languageBands(columns) {
 }
 
 /**
- * What every column has in common, said once.
- *
- * This is where the parts the labels stopped printing go. Only genuinely
- * constant fields are named, so the line can be read as a fact about the
+ * What every column has in common — where the parts `distinguish` stopped
+ * printing go. Only genuinely constant fields, so the line is a fact about the
  * whole table rather than about most of it.
  */
 function caption(columns) {
@@ -317,12 +298,9 @@ function caption(columns) {
 }
 
 /**
- * Group the columns the way a reader compares them: language-major, then
- * same library adjacent.
- *
- * Language leads so the band above the header has something contiguous to
- * name, and it costs nothing — a library is effectively single-language here,
- * so the pairs worth comparing side by side stay side by side.
+ * Language-major, then same library adjacent: the band above the header needs
+ * something contiguous to name, and a library is effectively single-language
+ * here, so the pairs worth comparing stay side by side anyway.
  */
 function compareColumns(a, b) {
   return (

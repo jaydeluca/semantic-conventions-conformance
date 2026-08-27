@@ -3,22 +3,18 @@
 
 // The shell: load the report once, then render whichever view the hash names.
 //
-// Hash routing rather than paths, because the site is served from Pages with
-// no rewrite rules — a deep link has to survive a cold load, and `#/target/x`
-// does while `/target/x` would 404.
+// Hash routing rather than paths: Pages has no rewrite rules, so `#/signals/x`
+// survives a cold load where `/signals/x` would 404.
 
 import { load } from './data.js';
 import { el } from './ui.js';
 
-// Imported as a namespace rather than a default, so a view can also export a
-// `title` for the tab and the history entry — the part that makes a deep link
-// worth having.
+// A view module exports a default renderer and, optionally, a `title`.
 import * as signals from './views/signals.js';
 
-// Two entries for the one view: `#/` is the site's front door and
-// `#/signals/<key>` is what the signal selector writes. They stay separate so
-// the front door can be repointed at a landing view without touching the
-// deep link.
+// `#/` is the front door and `#/signals/<key>` is what the selector writes;
+// separate entries so the front door can be repointed at a landing view
+// without touching the deep link.
 const ROUTES = [
   { name: 'signals', match: /^\/?$/, view: signals },
   { name: 'signals', match: /^\/signals(?:\/(.+))?$/, view: signals },
@@ -26,10 +22,9 @@ const ROUTES = [
 
 const main = document.querySelector('main');
 
-// A hash is user-editable, and `decodeURIComponent` throws on a stray percent
-// (`#/signals/50%`). That is a bad address, not an unreadable report, so it
-// resolves to the front door like any other unmatched path — the alternative
-// is a URIError escaping the render and being reported as a failed load.
+// `decodeURIComponent` throws on a stray percent (`#/signals/50%`). A bad
+// address is not an unreadable report, so it falls through to the front door
+// rather than letting a URIError escape and read as a failed load.
 function decode(hash) {
   try {
     return decodeURIComponent(hash);

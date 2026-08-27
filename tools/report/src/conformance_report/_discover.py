@@ -3,14 +3,10 @@
 
 """Every conformance directory in a checkout, with what it declared.
 
-The runner never reads a path for meaning, and a data file says nothing about
-itself, so identity comes from the ``conformance.yaml`` beside it. One thing
-is only in the path: the language. Nothing in a directory's declarations names
-it — ``runner:`` names the domain, and the same domain spans four of them — so
-the tree is the only place to read it from.
-
-That makes the layout a contract of the *reporting* layer rather than of the
-runner::
+Identity comes from the ``conformance.yaml`` beside the data — except the
+language, which nothing declares (``runner:`` names the domain, and one domain
+spans four languages). So the layout is a contract of the *reporting* layer
+rather than of the runner::
 
     scenarios/<domain>/<language>/<library>/<instrumentation>[/<side>]
 """
@@ -22,16 +18,12 @@ from pathlib import Path
 
 from opentelemetry.conformance import PackageSpec, load_spec
 
-# What a conformance directory is recognised by, and the reduction beside it.
 SPEC_FILE = "conformance.yaml"
 DATA_FILE = "data.json"
-
-# The root the layout above is relative to.
 SCENARIO_ROOT = "scenarios"
 
-# The trailing segment naming which half of a two-sided domain a directory
-# holds. HTTP splits them because coverage reduces everything a package
-# emitted, so one run must not be able to hide a client span in a server run.
+# HTTP gives each side its own directory: coverage reduces everything a package
+# emitted, so a server run must not be able to hide a client span.
 _SIDES = ("client", "server")
 
 
@@ -39,7 +31,7 @@ _SIDES = ("client", "server")
 class Target:
     """One conformance directory: where it is, and what it declared."""
 
-    # Path-derived, and stable enough to key a report and a URL on.
+    # Path-derived.
     id: str
     path: str
     domain: str
@@ -72,10 +64,9 @@ def _facets(relative: Path) -> tuple[str, str, str, str, str | None]:
 def discover(root: Path) -> list[Target]:
     """Every conformance directory under ``root`` that has a reduction.
 
-    A directory with a spec but no ``data.json`` has never been run to
-    completion, so there is nothing to report about it; it is skipped rather
-    than reported as empty coverage, which would read as a failing
-    implementation instead of an absent measurement.
+    A spec with no ``data.json`` was never run to completion. Skipped, rather
+    than reported as empty coverage — an absent measurement is not a failing
+    implementation.
     """
     scenarios = root / SCENARIO_ROOT
     found: list[Target] = []

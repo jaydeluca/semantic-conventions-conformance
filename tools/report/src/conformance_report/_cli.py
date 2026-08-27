@@ -1,12 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""``otel-conformance-report`` — build the report, or check the committed one.
-
-Three verbs, because the report is used three ways: written by the nightly
-rebuild, checked against the tree by hand, and summarised for a human reading
-the pull request that rebuild opens.
-"""
+"""``otel-conformance-report`` — build, check, or summarise the report."""
 
 from __future__ import annotations
 
@@ -20,9 +15,7 @@ from ._aggregate import build, render
 from ._markdown import render as render_summary
 from ._markdown import render_diff
 
-# Where the committed report lives, and where the site reads it from. One
-# default in one place: the workflow that writes it, the `check` that compares
-# it and the page that fetches it have to name the same file.
+# Where the committed report lives, and where the site fetches it from.
 DEFAULT_REPORT = Path("docs/data/conformance.json")
 
 

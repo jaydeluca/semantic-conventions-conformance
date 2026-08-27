@@ -3,22 +3,14 @@
 
 """Every committed reduction, joined to what the registry declared.
 
-A ``data.json`` is a numerator. It records which of a signal's declared
-attributes a run carried, and it cannot say how many there were to carry —
-that is in the coverage model, weaver's resolution of the pinned registry,
-which is a cache rather than a committed file. So the report joins the two and
-commits the result, and the site it feeds needs neither weaver nor a registry.
+A ``data.json`` records which of a signal's declared attributes a run carried;
+the denominator is in the coverage model, which is a cache rather than a
+committed file. Joining them here is what lets the site read the report
+without weaver or a registry. See ``README.md``.
 
-The document carries the slice of the model it referenced for the same reason:
-a reader asking "what was missing" is asking about the registry, and shipping
-that answer beside the observation is what keeps the two from drifting apart.
-
-Determinism is a requirement, not a nicety. The committed file is compared
-byte-for-byte against a rebuild, so a rebuild that reorders a list opens a
-nightly pull request saying nothing; and the ecosystem registry downstream
-content-addresses what it ingests, so ordering churn there reads as a change
-that never happened. Hence sorted keys, sorted sequences, and no timestamp
-anywhere.
+Output is deterministic — sorted keys, sorted sequences, no timestamp. The
+committed file is compared byte-for-byte against a rebuild, and the ecosystem
+registry downstream content-addresses what it ingests.
 """
 
 from __future__ import annotations
@@ -38,20 +30,17 @@ SCHEMA_VERSION = 1
 # the report names one by. Entities are shaped differently and handled apart.
 _SIGNAL_KINDS = {"spans": "span", "events": "event", "metrics": "metric"}
 
-# The levels a score may be built from. The rest — every `conditionally_`
-# level, `opt_in`, and the `_conditional` variants — are reported as counts
-# only: whether their condition held is not in the data, so an absence there
-# is not a gap. See the report's README.
+# The levels a score may be built from. The rest are counted, never scored:
+# whether a condition held is not in the data, and an absent opt_in is correct
+# behaviour. See the report's README.
 SCORED_LEVELS = ("required", "recommended")
 
 
 def _domains(targets: Iterable[Target]) -> dict[str, Domain]:
     """The domain behind each ``runner:`` the targets name.
 
-    Resolving a domain resolves its coverage model, which fetches a registry
-    and runs weaver the first time. Doing it once per distinct runner rather
-    than once per target is the difference between two resolutions and one
-    per target.
+    Resolved once per distinct runner: resolving one fetches a registry and
+    runs weaver the first time.
     """
     resolved: dict[str, Domain] = {}
     for target in targets:
@@ -89,10 +78,8 @@ def signal_coverage(
     """Each signal the run recorded, against what the registry declares.
 
     A signal the model does not declare keeps ``declared: null`` rather than
-    being dropped or scored zero. A reduction only records registry-declared
-    signals, so this is not reachable from a matching pin — but a report may
-    be built against a pin the data was not produced at, and the honest answer
-    to "how much of it was covered" is then "unknown", not "none".
+    scoring zero — only reachable when the report is built against a different
+    pin than the data was, where the answer is "unknown", not "none".
     """
     built: list[dict[str, Any]] = []
     for kind, singular in _SIGNAL_KINDS.items():
@@ -111,10 +98,8 @@ def signal_coverage(
                 continue
             entry["missing"] = sorted(set(attributes) - set(emitted))
             entry["coverage"] = _coverage(attributes, emitted)
-            # The identity the ecosystem explorer keys telemetry on, so a
-            # signal here and a signal there are the same signal without a
-            # translation step: spans by kind and attribute set, metrics and
-            # events by name alone.
+            # The identity the ecosystem explorer keys telemetry on: spans by
+            # kind and attribute set, metrics and events by name alone.
             identity: dict[str, Any] = {"attributes": sorted(emitted)}
             if singular == "span":
                 identity["span_kind"] = declared.get("kind")
@@ -142,9 +127,8 @@ def _referenced(
 ) -> dict[str, Any]:
     """The slice of one domain's model its targets actually referenced.
 
-    The registries declare thousands of attributes across hundreds of signals;
-    these scenarios touch a couple of dozen. Shipping the whole model would be
-    most of the file and none of the answer.
+    The registries declare hundreds of signals; these scenarios touch a couple
+    of dozen, and the whole model would be most of the file.
     """
     wanted: dict[str, set[str]] = {kind: set() for kind in _SIGNAL_KINDS}
     entities: set[str] = set()
@@ -202,9 +186,9 @@ def build(root: Path) -> dict[str, Any]:
                 "instrumentation_library": (
                     target.spec.instrumentation_library
                 ),
-                # The directory the implementation lives in, which is what
-                # tells two instrumentations of one library apart where their
-                # coordinates do not. See ``test_repo.py``.
+                # The directory name: what tells two instrumentations of one
+                # library apart where their coordinates do not. See
+                # ``test_repo.py``.
                 "label": target.instrumentation,
                 "scenario_classes": sorted(target.spec.scenarios),
                 "signals": signals,

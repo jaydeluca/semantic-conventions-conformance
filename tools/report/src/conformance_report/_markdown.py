@@ -1,12 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""The report as a table, for a job summary or a pull request.
-
-Small on purpose. A run in CI is where someone first sees that conformance
-moved, and what they need there is the shape of the whole thing and which
-targets are worth opening — not the report, which is a click away.
-"""
+"""The report as a table, for a job summary or a pull request body."""
 
 from __future__ import annotations
 
@@ -15,15 +10,11 @@ from typing import Any, Iterable, Mapping
 
 from ._aggregate import SCORED_LEVELS
 
-# How many rows the per-target table is worth. Beyond this it stops being a
-# summary; the count of what was left out is printed instead.
 _ROWS = 15
 
-# And how many lines of diff. Normally a handful — a pin bump moves a few
-# attributes — but a registry ref that renames a signal moves every target at
-# once, and a job summary GitHub refuses (it caps them at 1 MiB) fails the
-# step, and with it the rebuild that would have opened the pull request. A
-# truncated summary is worth more than that.
+# A registry ref that renames a signal moves every target at once. GitHub caps
+# a job summary at 1 MiB and fails the step over it, taking the rebuild — and
+# the pull request it would have opened — with it.
 _CHANGES = 200
 
 

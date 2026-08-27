@@ -1,24 +1,15 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""The report this repo actually produces.
+"""The report this repo actually produces, checked against the committed
+reductions rather than against data a test invented.
 
-The unit tests above prove the join is right on data they invented. These
-check it against the committed reductions themselves, so a change that quietly
-drops targets or double-counts findings fails here rather than on the site.
+Asserted against the tree rather than a census written down here: scenarios
+land continuously and every pin is on a Renovate schedule, so a hardcoded count
+would fail on the next unrelated pull request.
 
-Asserted against the tree rather than against a census written down here:
-scenarios land continuously and every pin is on a Renovate schedule, so a
-hardcoded count or version would fail on the next unrelated pull request and
-teach everyone to edit it without reading it.
-
-This is also where the label rule lives — the tree, not the coordinate, is
-what names an instrumentation on the site — because
-`test_competing_implementations_of_one_library_are_distinguishable` is the
-only place that can state it against real competing implementations.
-
-Skipped when the committed report is absent — the report needs weaver and a
-fetched registry to rebuild, which not every checkout has.
+Skipped when the committed report is absent — rebuilding it needs weaver and a
+fetched registry, which not every checkout has.
 """
 
 from __future__ import annotations

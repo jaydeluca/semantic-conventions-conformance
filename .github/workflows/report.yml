@@ -3,17 +3,13 @@ name: Report
 # Rebuilds `docs/data/conformance.json` — the aggregate the site reads — and
 # opens a pull request when it moved.
 #
-# Nightly rather than per-pull-request on purpose. The report's denominator is
-# weaver's resolution of the pinned registry, so rebuilding it means installing
-# weaver and fetching a registry; gating every pull request on that would make
-# a one-line scenario change wait on work that has nothing to do with it. The
-# trade is latency: between a merge that moves a reduction and the next run,
-# the committed report — and so the published site — is a day behind the tree.
-# The `Runner` workflow still gates the reductions themselves.
+# Nightly rather than per-pull-request: rebuilding needs weaver and a fetched
+# registry, which no scenario change should have to wait on. The trade is that
+# the committed report, and so the site, can be a day behind the tree. The
+# `Runner` workflow still gates the reductions themselves.
 on:
   schedule:
-    # 05:17 UTC. Off the hour deliberately: schedulers fire in a crowd at :00
-    # and a queued cron run is a delayed one.
+    # Off the hour: GitHub's scheduler is busiest at :00 and queues runs.
     - cron: "17 5 * * *"
   workflow_dispatch:
 
@@ -60,10 +56,8 @@ jobs:
           path: ~/.cache/otel-conformance/semconv
           key: semconv-${{ hashFiles('tools/**/versions.env') }}
 
-      # Only the two domain wrappers and what they import: the report reads a
-      # `runner:`, and every target names one of these two. The per-language
-      # launchers under tools/java, tools/js and tools/dotnet build and run a
-      # scenario, which this job never does.
+      # Only the two domain wrappers: the report resolves a `runner:` and never
+      # builds or runs a scenario, so the per-language launchers are not needed.
       - name: Install the report tool
         run: |
           python -m pip install --upgrade pip
@@ -84,9 +78,8 @@ jobs:
       - name: Rebuild the report
         run: otel-conformance-report build
 
-      # `markdown` resolves the model itself rather than reading the file the
-      # step above wrote — the registry is cached on disk by now, so this is a
-      # re-resolve, not a re-fetch. The same text becomes the pull request body.
+      # `markdown` rebuilds rather than reading the file above; the registry is
+      # cached by now. The same text becomes the pull request body.
       - name: Summarise
         run: |
           otel-conformance-report markdown \
@@ -94,10 +87,8 @@ jobs:
             | tee "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
 
       # A pull request opened with GITHUB_TOKEN does not trigger workflows, so
-      # `Runner` would never report on it and the required check would never go
-      # green. The org's otelbot app is the way around that; when it is not
-      # installed here the pull request still opens, but a maintainer has to
-      # close and reopen it to get CI to run. See
+      # `Runner` would never go green on it. Without otelbot installed here the
+      # pull request still opens, but a maintainer must close and reopen it.
       # https://github.com/open-telemetry/admin/blob/main/scripts/create_otelbot_app.py
       - name: Mint an otelbot token
         id: otelbot
@@ -106,16 +97,14 @@ jobs:
         with:
           client-id: ${{ vars.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_PRIVATE_KEY }}
-          # Narrowed from the app's blanket install permissions to the two the
-          # step below uses. Without these the token can do anything the app
-          # can, in every repo it is installed on.
+          # Narrowed from the app's blanket install permissions; without these
+          # the token can do anything the app can, in every repo it is on.
           permission-contents: write
           permission-pull-requests: write
 
-      # No-ops when the rebuild matched what was committed, which is the usual
-      # night: the report only moves when a reduction or a registry pin did.
-      # One long-lived branch, force-pushed, so a night that lands on top of an
-      # unmerged report replaces it instead of opening a second pull request.
+      # No-ops when the rebuild matched what was committed. One long-lived
+      # branch, force-pushed, so a night landing on an unmerged report replaces
+      # it instead of opening a second pull request.
       - name: Open a pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:

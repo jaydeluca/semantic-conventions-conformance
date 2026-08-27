@@ -1,21 +1,15 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// The pieces every view draws with.
-//
-// Deliberately small and hand-rolled: every visualization this report needs
-// is a table, a proportional bar, a grid of cells, or a line — so a charting
-// library would be a dependency tree bought for arithmetic that fits here.
+// The pieces every view draws with. Hand-rolled: every visualization here is a
+// table or a grid of cells, which is not worth a charting dependency.
 
 import { LEVELS, LEVEL_LABEL, levelColor } from './data.js';
 
 /**
- * Build an element. `attrs` may carry `class`, `text`, or events.
+ * Build an element. `attrs` may carry `class`, `text`, or `on*` handlers.
  *
- * No `html` escape hatch on purpose: every string this module renders comes
- * from the report, which carries registry-authored names, and one convenience
- * key is not worth being the only place that could hand them to a parser.
- * Nest a child element instead.
+ * No `html` escape hatch on purpose — nest a child element instead.
  */
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -48,10 +42,8 @@ export function levelLegend(levels = LEVELS) {
 /**
  * A search box plus select filters, calling back on any change.
  *
- * A filter may name its own starting `value`, and may pass `all: null` to say
- * it has no all-state — a selector whose choice the view below cannot do
- * without. Between them a caller says where a control opens up front, rather
- * than reaching back into the DOM for it afterwards and selecting by position.
+ * A filter may name its own starting `value`, and `all: null` says it has no
+ * all-state — a selector whose choice the view below cannot do without.
  */
 export function toolbar({ search, filters = [], onChange }) {
   const state = {
@@ -85,9 +77,6 @@ export function toolbar({ search, filters = [], onChange }) {
         },
       },
       [
-        // `all: null` means there is no all-state to offer. Rendering the
-        // option anyway would name a state the view cannot draw, and leave
-        // the control disagreeing with the table under it.
         filter.all === null
           ? null
           : el('option', { value: '', text: filter.all ?? 'All' }),
@@ -99,9 +88,8 @@ export function toolbar({ search, filters = [], onChange }) {
         ),
       ],
     );
-    // Start the control and `state` in agreement. A filter with no all-state
-    // opens on whatever the caller named, and on its first option when the
-    // caller named nothing the list holds.
+    // Start the control and `state` in agreement: an unmatched `value` falls
+    // back to the first option.
     select.value = state[filter.key];
     if (select.selectedIndex < 0) select.selectedIndex = 0;
     state[filter.key] = select.value;

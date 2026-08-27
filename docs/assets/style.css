@@ -186,11 +186,9 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
   height: 11.5rem; padding: .3rem 0; vertical-align: bottom;
   background: var(--surface-2); text-transform: none; letter-spacing: 0;
 }
-/* Rotated, and two blocks rather than one string: in vertical writing the
-   block axis runs across the screen, so the lines sit side by side and the
-   height is set by the longer one instead of by their sum. That is what keeps
-   a 23-character instrumentation name inside the band instead of clipped by
-   it. The overflow rule is a backstop, not the layout. */
+/* Rotated, and two blocks rather than one string: in vertical writing the block
+   axis runs across the screen, so the lines sit side by side and the height is
+   the longer one rather than their sum. `overflow` is a backstop. */
 .heatmap thead th.col > span {
   display: block; writing-mode: vertical-rl; transform: rotate(180deg);
   font-family: var(--mono); font-weight: 400; white-space: nowrap;

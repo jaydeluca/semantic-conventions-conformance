@@ -104,8 +104,7 @@ def write_target(
 def one_domain(monkeypatch: pytest.MonkeyPatch) -> None:
     """Stand in for the wrapper a `runner:` would resolve to.
 
-    Resolving the real thing fetches a registry and runs weaver, which is the
-    one part of a build no unit test wants to do.
+    Resolving the real thing fetches a registry and runs weaver.
     """
 
     class Stub:

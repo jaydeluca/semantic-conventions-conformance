@@ -3,12 +3,9 @@
 
 // The report, and the indices every view reads it through.
 //
-// A few dozen targets and a few thousand attribute records, so everything
-// here is built once in memory rather than precomputed into the file. That is
-// what keeps the report one shape: it says what was observed, and the
-// questions — which attribute nobody emits, which targets share a signal —
-// are answered here instead of being baked in as extra denormalised copies
-// that could disagree with it.
+// Built in memory rather than precomputed into the file, so the report stays
+// one shape: it says what was observed, and derived answers cannot drift from
+// it.
 
 /** Requirement levels, ordered by how much an absence from one means. */
 export const LEVELS = [
@@ -38,14 +35,9 @@ const LEVEL_VAR = {
 export const levelColor = (level) => `var(${LEVEL_VAR[level] ?? '--optin'})`;
 
 /**
- * A stable colour per language.
- *
- * Assigned once from the sorted set the report contains, rather than from a
- * hardcoded map, so a new language in `scenarios/` gets a colour without a
- * code change — and assigned by name rather than by first appearance, so the
- * colour a reader learns on one view is the colour it has on every other.
- *
- * Filled in by `index()`, so `languageColor` only answers after `load()`.
+ * A stable colour per language, assigned by sorted name rather than by first
+ * appearance so it is the same colour on every view. Filled in by `index()`,
+ * so `languageColor` only answers after `load()`.
  */
 const LANGUAGE_SLOT = new Map();
 
@@ -62,13 +54,9 @@ async function fetchJson(url) {
 }
 
 /**
- * The report shape this file knows how to read.
- *
- * The vocabulary above — the level names, and which of them are scored — is
- * the report's, restated here because the site has no way to import Python.
- * A level rename upstream would leave every bar reading zero with nothing to
- * say why, so the version the report stamps itself with is checked instead:
- * an unreadable report should say so rather than render a wrong one.
+ * The report shape this file knows how to read. The level vocabulary above is
+ * the report's, restated here because the site cannot import Python — so a
+ * rename upstream has to fail loudly rather than render every bar as zero.
  */
 const SCHEMA_VERSION = 1;
 
@@ -96,12 +84,8 @@ function index(report) {
   const targets = report.targets;
 
   // Signals, each with the registry's declaration and everyone who emits it.
-  //
-  // Keyed the way the report keys one — by type and name together, not by name
-  // alone. A metric and a span may share a name, and the entry carries the
-  // declaration everything below it is drawn against, so merging two would
-  // render one signal's columns against the other's attribute list with
-  // nothing on the page to say so.
+  // Keyed by type and name together: a metric and a span may share a name, and
+  // the entry carries the declaration every column is drawn against.
   const signals = new Map();
   for (const target of targets) {
     for (const signal of target.signals) {
@@ -122,9 +106,7 @@ function index(report) {
         };
         signals.set(key, entry);
       }
-      // First declaration wins, but an absent one never does: a target whose
-      // runner does not declare the signal must not be what decides the whole
-      // column set has nothing to compare against.
+      // First declaration wins, but an absent one never does.
       if (entry.attributes === null && declared?.attributes) {
         entry.attributes = declared.attributes;
         entry.kind = declared.kind ?? null;
@@ -138,14 +120,10 @@ function index(report) {
 }
 
 /**
- * The least that still tells a set of targets apart.
- *
- * Printing the full coordinate on every column spends the width on what they
- * share — most of the java targets are the same javaagent — and clips the part
- * that differs. So: name the library, and add the report's `label` only when
- * two targets in the set share a library under different instrumentations,
- * the side only when the set mixes both. Computed per set, because what
- * distinguishes a target is a fact about its company, not about the target.
+ * The least that still tells a set of targets apart: the library, plus the
+ * report's `label` only where two of them share a library, plus the side only
+ * where the set mixes both. Computed per set — what distinguishes a target is
+ * a fact about its company, not about the target.
  */
 export function distinguish(targets) {
   const byLibrary = new Map();
