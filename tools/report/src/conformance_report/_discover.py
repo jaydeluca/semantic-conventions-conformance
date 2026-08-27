@@ -13,10 +13,6 @@ That makes the layout a contract of the *reporting* layer rather than of the
 runner::
 
     scenarios/<domain>/<language>/<library>/<instrumentation>[/<side>]
-
-which the package coordinates corroborate: ``instrumentation_library`` is
-already ecosystem-native per language, Maven for java and npm for js, so a
-target whose language and coordinate disagree is a mislaid directory.
 """
 
 from __future__ import annotations

@@ -3,8 +3,9 @@
 
 """``otel-conformance-report`` — build the report, or check the committed one.
 
-Three verbs, because the report is used three ways: written, verified in CI,
-and summarised for a human reading a pull request.
+Three verbs, because the report is used three ways: written by the nightly
+rebuild, checked against the tree by hand, and summarised for a human reading
+the pull request that rebuild opens.
 """
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ from ._markdown import render as render_summary
 from ._markdown import render_diff
 
 # Where the committed report lives, and where the site reads it from. One
-# default in one place: the workflow, the checker and the page must agree or
-# the page loads a report nothing gated.
+# default in one place: the workflow that writes it, the `check` that compares
+# it and the page that fetches it have to name the same file.
 DEFAULT_REPORT = Path("docs/data/conformance.json")
 
 
@@ -40,8 +41,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     verbs = parser.add_subparsers(dest="verb", required=True)
 
-    build = verbs.add_parser("build", help="write the report")
-    build.add_argument("--out", type=Path, default=DEFAULT_REPORT)
+    writer = verbs.add_parser("build", help="write the report")
+    writer.add_argument("--out", type=Path, default=DEFAULT_REPORT)
 
     verbs.add_parser(
         "check",

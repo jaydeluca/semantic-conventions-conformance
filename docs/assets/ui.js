@@ -53,7 +53,7 @@ export function levelLegend(levels = LEVELS) {
  * without. Between them a caller says where a control opens up front, rather
  * than reaching back into the DOM for it afterwards and selecting by position.
  */
-export function toolbar({ search, filters = [], onChange, summary }) {
+export function toolbar({ search, filters = [], onChange }) {
   const state = {
     q: '',
     ...Object.fromEntries(filters.map((f) => [f.key, f.value ?? ''])),
@@ -61,8 +61,7 @@ export function toolbar({ search, filters = [], onChange, summary }) {
   const count = el('span', { class: 'count' });
 
   const emit = () => {
-    const label = onChange({ ...state });
-    if (summary !== false) count.textContent = label ?? '';
+    count.textContent = onChange({ ...state }) ?? '';
   };
 
   const input = el('input', {

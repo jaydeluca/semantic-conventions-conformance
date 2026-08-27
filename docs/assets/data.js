@@ -49,8 +49,11 @@ export const levelColor = (level) => `var(${LEVEL_VAR[level] ?? '--optin'})`;
  */
 const LANGUAGE_SLOT = new Map();
 
+/** How many `--lang-N` tokens `style.css` defines. */
+const LANGUAGE_SLOTS = 6;
+
 export const languageColor = (language) =>
-  `var(--lang-${LANGUAGE_SLOT.get(language) ?? 6})`;
+  `var(--lang-${LANGUAGE_SLOT.get(language) ?? LANGUAGE_SLOTS})`;
 
 async function fetchJson(url) {
   const response = await fetch(url, { cache: 'no-cache' });
@@ -80,19 +83,17 @@ export async function load() {
   return index(report);
 }
 
+/** How a signal is addressed — in the index below, and in a `#/signals/` link. */
+const signalKey = (type, name) => `${type}:${name}`;
+
 function index(report) {
   const languages = [...new Set(report.targets.map((t) => t.language))].sort();
   LANGUAGE_SLOT.clear();
-  languages.forEach((language, i) => LANGUAGE_SLOT.set(language, (i % 6) + 1));
+  languages.forEach((language, i) =>
+    LANGUAGE_SLOT.set(language, (i % LANGUAGE_SLOTS) + 1),
+  );
 
-  const targets = report.targets.map((target) => ({
-    ...target,
-    // What to call this implementation in a column or a link: the directory
-    // it lives in, which is the repo's own answer to "which of the four
-    // openai instrumentations is this". A coordinate is not — two of them
-    // shorten to the same word.
-    short: target.label,
-  }));
+  const targets = report.targets;
 
   // Signals, each with the registry's declaration and everyone who emits it.
   //
@@ -136,33 +137,30 @@ function index(report) {
   return { report, targets, signals };
 }
 
-/** How a signal is addressed — in the index above, and in a `#/signals/` link. */
-const signalKey = (type, name) => `${type}:${name}`;
-
 /**
  * The least that still tells a set of targets apart.
  *
  * Printing the full coordinate on every column spends the width on what they
  * share — most of the java targets are the same javaagent — and clips the part
- * that differs. So: name the library, and add the instrumentation only when
+ * that differs. So: name the library, and add the report's `label` only when
  * two targets in the set share a library under different instrumentations,
  * the side only when the set mixes both. Computed per set, because what
  * distinguishes a target is a fact about its company, not about the target.
  */
 export function distinguish(targets) {
-  const shorts = new Map();
+  const byLibrary = new Map();
   for (const target of targets) {
     const key = target.instrumented_library;
-    if (!shorts.has(key)) shorts.set(key, new Set());
-    shorts.get(key).add(target.short);
+    if (!byLibrary.has(key)) byLibrary.set(key, new Set());
+    byLibrary.get(key).add(target.label);
   }
   const sides = new Set(targets.map((target) => target.side ?? ''));
 
   return new Map(
     targets.map((target) => {
       const parts = [];
-      if (shorts.get(target.instrumented_library).size > 1) {
-        parts.push(target.short);
+      if (byLibrary.get(target.instrumented_library).size > 1) {
+        parts.push(target.label);
       }
       if (sides.size > 1 && target.side) parts.push(target.side);
       return [
@@ -180,5 +178,5 @@ export function distinguish(targets) {
 /** Everything about a target's identity, for a tooltip or a label. */
 export function fullLabel(target) {
   const side = target.side ? ` ${target.side}` : '';
-  return `${target.instrumented_library} · ${target.short}${side}`;
+  return `${target.instrumented_library} · ${target.label}${side}`;
 }

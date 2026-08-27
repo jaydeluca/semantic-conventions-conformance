@@ -23,8 +23,6 @@
   --optin: #8a8f9a;
 
   --good: #1a7f5a;
-  --warn: #a86a12;
-  --bad: #b4295c;
   --miss: #e7e9ee;
 
   /* Languages. A separate scale from the requirement levels on purpose: it
@@ -61,8 +59,6 @@
     --optin: #7d838f;
 
     --good: #4fc294;
-    --warn: #e0a94f;
-    --bad: #f07fa5;
     --miss: #262b33;
 
     --lang-1: #52c3d1;
@@ -134,7 +130,6 @@ footer p { margin: .2rem 0; }
 /* --- shared chrome ------------------------------------------------------- */
 
 h2 { font-size: 1.15rem; font-weight: 620; margin: 0 0 .2rem; letter-spacing: -0.01em; }
-h3 { font-size: .95rem; font-weight: 600; margin: 1.6rem 0 .5rem; }
 .lede { color: var(--ink-2); margin: 0 0 1.2rem; max-width: 76ch; font-size: .9rem; }
 
 .loading, .empty {
@@ -239,6 +234,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .heatmap tr.level-head th {
   background: var(--surface-2); font-size: .72rem; text-transform: uppercase;
   letter-spacing: .05em; color: var(--ink-2); position: sticky; left: 0;
+}
+.heatmap tr.level-head i {
+  display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+  margin-right: .4rem;
 }
 .rowcount { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 

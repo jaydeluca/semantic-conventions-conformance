@@ -13,11 +13,12 @@ The document carries the slice of the model it referenced for the same reason:
 a reader asking "what was missing" is asking about the registry, and shipping
 that answer beside the observation is what keeps the two from drifting apart.
 
-Determinism is a requirement, not a nicety. The file is committed and gated by
-``git diff``, so a rebuild that reorders a list is a failing build; and the
-ecosystem registry downstream content-addresses what it ingests, so ordering
-churn there reads as a change that never happened. Hence sorted keys, sorted
-sequences, and no timestamp anywhere.
+Determinism is a requirement, not a nicety. The committed file is compared
+byte-for-byte against a rebuild, so a rebuild that reorders a list opens a
+nightly pull request saying nothing; and the ecosystem registry downstream
+content-addresses what it ingests, so ordering churn there reads as a change
+that never happened. Hence sorted keys, sorted sequences, and no timestamp
+anywhere.
 """
 
 from __future__ import annotations
@@ -201,14 +202,9 @@ def build(root: Path) -> dict[str, Any]:
                 "instrumentation_library": (
                     target.spec.instrumentation_library
                 ),
-                # The directory the implementation lives in. A coordinate does
-                # not distinguish them: `opentelemetry-instrumentation-openai`
-                # is OpenLLMetry's and `...-genai-openai` is OpenTelemetry's,
-                # and both shorten to "openai". The tree already solves this —
-                # the READMEs name the segment after whatever produced the
-                # telemetry, `openllmetry` beside `opentelemetry-openai` — so
-                # that is the label a column gets, with the coordinate behind
-                # it for anyone who needs to install the thing.
+                # The directory the implementation lives in, which is what
+                # tells two instrumentations of one library apart where their
+                # coordinates do not. See ``test_repo.py``.
                 "label": target.instrumentation,
                 "scenario_classes": sorted(target.spec.scenarios),
                 "signals": signals,

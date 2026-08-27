@@ -11,6 +11,8 @@ from typing import Any
 
 import pytest
 
+from conformance_report import _aggregate
+
 SPEC = """\
 runner: {runner}
 instrumented_library: {library}
@@ -99,7 +101,18 @@ def write_target(
 
 
 @pytest.fixture
-def checkout(tmp_path: Path) -> Path:
-    """A checkout with one target in it."""
-    write_target(tmp_path, "demo/python/demo/opentelemetry-demo")
-    return tmp_path
+def one_domain(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stand in for the wrapper a `runner:` would resolve to.
+
+    Resolving the real thing fetches a registry and runs weaver, which is the
+    one part of a build no unit test wants to do.
+    """
+
+    class Stub:
+        name = "demo-conformance"
+        repo = "open-telemetry/demo"
+        ref = "v1.0.0"
+        registry_dir = "model"
+        coverage_model = MODEL
+
+    monkeypatch.setattr(_aggregate, "load_domain", lambda _name: Stub())

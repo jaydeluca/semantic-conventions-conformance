@@ -31,7 +31,11 @@ function choose(data, key) {
     (a, b) => b.rows.length - a.rows.length || a.name.localeCompare(b.name),
   );
   const chosen = key ? data.signals.get(key) : undefined;
-  return { available, chosen: chosen ?? available[0], unknown: key && !chosen };
+  return {
+    available,
+    chosen: chosen ?? available[0],
+    unknown: Boolean(key) && !chosen,
+  };
 }
 
 export function title(data, key) {
@@ -173,9 +177,7 @@ function heatmap(signal, rows, levels) {
     body.append(
       el('tr', { class: 'level-head' }, [
         el('th', { colspan: columns.length + 2, scope: 'colgroup' }, [
-          el('i', {
-            style: `display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:.4rem;background:${levelColor(level)}`,
-          }),
+          el('i', { style: `background:${levelColor(level)}` }),
           `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
         ]),
       ]),
@@ -326,7 +328,7 @@ function compareColumns(a, b) {
   return (
     a.target.language.localeCompare(b.target.language) ||
     a.target.instrumented_library.localeCompare(b.target.instrumented_library) ||
-    a.target.short.localeCompare(b.target.short) ||
+    a.target.label.localeCompare(b.target.label) ||
     (a.target.side ?? '').localeCompare(b.target.side ?? '')
   );
 }

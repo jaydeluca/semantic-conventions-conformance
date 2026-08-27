@@ -12,6 +12,11 @@ scenarios land continuously and every pin is on a Renovate schedule, so a
 hardcoded count or version would fail on the next unrelated pull request and
 teach everyone to edit it without reading it.
 
+This is also where the label rule lives — the tree, not the coordinate, is
+what names an instrumentation on the site — because
+`test_competing_implementations_of_one_library_are_distinguishable` is the
+only place that can state it against real competing implementations.
+
 Skipped when the committed report is absent — the report needs weaver and a
 fetched registry to rebuild, which not every checkout has.
 """
@@ -24,7 +29,9 @@ from pathlib import Path
 
 import pytest
 
-REPORT = Path(__file__).parents[3] / "docs" / "data" / "conformance.json"
+ROOT = Path(__file__).parents[3]
+REPORT = ROOT / "docs" / "data" / "conformance.json"
+SCENARIOS = ROOT / "scenarios"
 
 pytestmark = pytest.mark.skipif(
     not REPORT.is_file(), reason="docs/data/conformance.json is not built"
@@ -46,10 +53,9 @@ def test_every_conformance_directory_is_in_the_report(
     report: dict[str, object],
 ) -> None:
     """One target per committed reduction, none dropped and none invented."""
-    root = REPORT.parents[2]
     on_disk = {
-        path.parent.relative_to(root / "scenarios").as_posix()
-        for path in (root / "scenarios").rglob("data.json")
+        path.parent.relative_to(SCENARIOS).as_posix()
+        for path in SCENARIOS.rglob("data.json")
     }
     assert {t["id"] for t in targets(report)} == on_disk
 
@@ -72,9 +78,8 @@ def test_the_domain_and_language_are_the_ones_the_path_names(
 
 def test_findings_are_carried_over_exactly(report: dict[str, object]) -> None:
     """Every finding, once: neither summarised away nor counted twice."""
-    root = REPORT.parents[2]
     on_disk: collections.Counter[str] = collections.Counter()
-    for path in (root / "scenarios").rglob("data.json"):
+    for path in SCENARIOS.rglob("data.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         on_disk.update(finding["id"] for finding in data.get("findings", []))
 
@@ -161,7 +166,7 @@ def test_the_registry_slice_covers_every_signal_a_target_emitted(
 
 
 def test_the_report_carries_no_timestamp(report: dict[str, object]) -> None:
-    """It is gated by `git diff`, so anything per-run makes CI fail forever."""
+    """Anything per-run would open a nightly pull request saying nothing."""
     text = REPORT.read_text(encoding="utf-8").lower()
     for word in ("timestamp", "generated_at", '"date"', "built_at"):
         assert word not in text

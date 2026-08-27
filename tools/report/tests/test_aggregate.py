@@ -5,14 +5,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from conformance_report import _aggregate, discover
-from conformance_report._aggregate import signal_coverage
+from conformance_report import _aggregate, build, render, signal_coverage
 from conftest import MODEL, write_target
 
 EMPTY: dict[str, Any] = {
@@ -113,72 +111,22 @@ def test_the_registry_slice_holds_only_what_was_referenced() -> None:
     assert referenced["events"] == {}
 
 
-def test_rendering_is_stable(tmp_path: Path) -> None:
-    """The file is committed and gated by git diff, so order cannot wobble."""
-    document = {"b": [2, 1], "a": {"z": 1, "y": 2}}
-    assert _aggregate.render(document) == _aggregate.render(dict(document))
-    assert _aggregate.render(document).startswith('{\n  "a"')
-    assert _aggregate.render(document).endswith("\n")
-
-
-def test_rendering_carries_no_timestamp(checkout: Path) -> None:
-    """A timestamp would make every rebuild a diff, breaking the CI gate."""
-    text = _aggregate.render(
-        {"schema_version": 1, "domains": {}, "registry": {}, "targets": []}
-    )
-    assert "time" not in text.lower()
-    assert "date" not in text.lower()
-    del checkout
-
-
-def test_a_directory_with_no_reduction_is_not_a_target(tmp_path: Path) -> None:
-    """Never run to completion is an absent measurement, not a failing one."""
-    write_target(tmp_path, "demo/python/a/opentelemetry-a")
-    unfinished = tmp_path / "scenarios" / "demo" / "python" / "b" / "otel-b"
-    unfinished.mkdir(parents=True)
-    (unfinished / "conformance.yaml").write_text(
-        "runner: demo-conformance\ninstrumented_library: b\n"
-        'instrumentation_library: otel-b\nscenarios:\n  main:\n    run: "true"\n',
-        encoding="utf-8",
-    )
-    assert [t.id for t in discover(tmp_path)] == [
-        "demo/python/a/opentelemetry-a"
-    ]
-
-
-def test_the_side_segment_is_recognised(tmp_path: Path) -> None:
-    write_target(tmp_path, "http/java/okhttp/opentelemetry-javaagent/client")
-    (target,) = discover(tmp_path)
-    assert (target.domain, target.language, target.side) == (
-        "http",
-        "java",
-        "client",
-    )
-    assert target.library == "okhttp"
-    assert target.instrumentation == "opentelemetry-javaagent"
-
-
-def test_a_trailing_segment_that_is_not_a_side_is_not_one(
-    tmp_path: Path,
-) -> None:
-    """Only the two the HTTP domain splits on; anything else is a slug."""
-    write_target(tmp_path, "demo/python/demo/opentelemetry-demo/extra")
-    (target,) = discover(tmp_path)
-    assert target.side is None
-
-
-def test_a_layout_too_shallow_to_read_is_an_error(tmp_path: Path) -> None:
-    write_target(tmp_path, "demo/python/demo")
-    with pytest.raises(ValueError, match="domain"):
-        discover(tmp_path)
+def test_rendering_sorts_keys_and_ends_in_a_newline() -> None:
+    """A rebuild is compared byte-for-byte, so order cannot wobble."""
+    rendered = render({"b": [2, 1], "a": {"z": 1, "y": 2}})
+    assert rendered.startswith('{\n  "a"')
+    assert rendered.endswith("\n")
+    # Sequences keep the order the report gave them; only keys are sorted.
+    assert '"b": [\n    2,\n    1\n  ]' in rendered
 
 
 def test_an_empty_checkout_says_so(tmp_path: Path) -> None:
     (tmp_path / "scenarios").mkdir()
     with pytest.raises(RuntimeError, match="no conformance directories"):
-        _aggregate.build(tmp_path)
+        build(tmp_path)
 
 
+@pytest.mark.usefixtures("one_domain")
 def test_findings_pass_through_verbatim(tmp_path: Path) -> None:
     """The report must not reinterpret a finding; weaver decided already."""
     finding = {
@@ -188,11 +136,11 @@ def test_findings_pass_through_verbatim(tmp_path: Path) -> None:
         "signal_name": "demo.duration",
         "context": {"expected": "{token}", "unit": "token"},
     }
-    directory = write_target(
+    write_target(
         tmp_path,
         "demo/python/demo/opentelemetry-demo",
         data={**EMPTY, "findings": [finding]},
     )
-    assert json.loads((directory / "data.json").read_text())["findings"] == [
-        finding
-    ]
+    (target,) = build(tmp_path)["targets"]
+    assert target["findings"] == [finding]
+    assert target["summary"]["findings"] == 1

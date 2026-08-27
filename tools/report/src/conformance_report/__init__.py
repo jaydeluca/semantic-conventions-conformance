@@ -14,12 +14,14 @@ be read by more than the page in ``docs/``. See ``README.md``.
 """
 
 from ._aggregate import SCHEMA_VERSION, build, render, signal_coverage
+from ._cli import cli
 from ._discover import Target, discover
 
 __all__ = [
     "SCHEMA_VERSION",
     "Target",
     "build",
+    "cli",
     "discover",
     "render",
     "signal_coverage",

@@ -22,7 +22,8 @@ _ROWS = 15
 # And how many lines of diff. Normally a handful — a pin bump moves a few
 # attributes — but a registry ref that renames a signal moves every target at
 # once, and a job summary GitHub refuses (it caps them at 1 MiB) fails the
-# step, which gates the merge. A truncated summary is worth more than that.
+# step, and with it the rebuild that would have opened the pull request. A
+# truncated summary is worth more than that.
 _CHANGES = 200
 
 
@@ -59,7 +60,7 @@ def render(document: Mapping[str, Any]) -> str:
     clean = sum(1 for t in targets if not t.get("findings"))
 
     lines += [
-        f"{len(targets)} targets across "
+        f"{len(targets)} target{'' if len(targets) == 1 else 's'} across "
         + ", ".join(
             f"{count} {language}"
             for language, count in sorted(languages.items())

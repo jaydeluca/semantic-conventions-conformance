@@ -18,27 +18,12 @@ from typing import Any
 import pytest
 
 from conformance_report import _aggregate, _cli, _markdown
-from conftest import MODEL, write_target
+from conftest import write_target
 
 TARGET = "demo/python/demo/opentelemetry-demo"
 
-
-@pytest.fixture(autouse=True)
-def _one_domain(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Stand in for the wrapper a `runner:` would resolve to.
-
-    Resolving the real thing fetches a registry and runs weaver; what these
-    tests are about is the verbs, not the resolution.
-    """
-
-    class Stub:
-        name = "demo-conformance"
-        repo = "open-telemetry/demo"
-        ref = "v1.0.0"
-        registry_dir = "model"
-        coverage_model = MODEL
-
-    monkeypatch.setattr(_aggregate, "load_domain", lambda _name: Stub())
+# Every verb here builds, and building resolves a `runner:`.
+pytestmark = pytest.mark.usefixtures("one_domain")
 
 
 def build_into(root: Path) -> Path:
@@ -58,7 +43,7 @@ def test_build_writes_the_report_where_the_site_reads_it(
 
 
 def test_build_is_byte_identical_twice_over(tmp_path: Path) -> None:
-    """The gate below is a byte comparison, so this is what makes it usable."""
+    """`check` is a byte comparison, so this is what makes it usable."""
     write_target(tmp_path, TARGET)
     first = build_into(tmp_path).read_bytes()
     second = build_into(tmp_path).read_bytes()
@@ -109,7 +94,7 @@ def test_markdown_says_what_the_run_covered(
     assert _cli.cli(["--root", str(tmp_path), "markdown"]) == 0
     printed = capsys.readouterr().out
     assert "Semantic-convention conformance" in printed
-    assert "1 targets across 1 python" in printed
+    assert "1 target across 1 python" in printed
     assert "open-telemetry/demo @ `v1.0.0`" in printed
 
 
@@ -157,7 +142,7 @@ def test_the_diff_reports_an_added_target() -> None:
 
 
 def test_a_diff_too_large_for_a_job_summary_is_truncated() -> None:
-    """GitHub refuses a summary over 1 MiB, and the step gates the merge."""
+    """GitHub refuses a summary over 1 MiB, which would fail the rebuild."""
     wide = 4 * _markdown._CHANGES
     changes = _markdown.render_diff(
         {"targets": [{"id": TARGET, "signals": [], "findings": []}]},
