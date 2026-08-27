@@ -96,16 +96,18 @@ def signal_coverage(
     built: list[dict[str, Any]] = []
     for kind, singular in _SIGNAL_KINDS.items():
         for name, emitted in sorted(data.get(kind, {}).items()):
-            entry: dict[str, Any] = {"type": singular, "name": name}
+            entry: dict[str, Any] = {
+                "type": singular,
+                "name": name,
+                "emitted": sorted(emitted),
+            }
             available: Mapping[str, Any] = model.get(kind, {})
             declared: Mapping[str, Any] = available.get(name) or {}
             attributes: Mapping[str, str] | None = declared.get("attributes")
             if attributes is None:
-                entry["emitted"] = sorted(emitted)
                 entry["declared"] = None
                 built.append(entry)
                 continue
-            entry["emitted"] = sorted(emitted)
             entry["missing"] = sorted(set(attributes) - set(emitted))
             entry["coverage"] = _coverage(attributes, emitted)
             # The identity the ecosystem explorer keys telemetry on, so a

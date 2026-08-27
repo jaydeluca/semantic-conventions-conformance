@@ -95,23 +95,39 @@ function index(report) {
   }));
 
   // Signals, each with the registry's declaration and everyone who emits it.
+  //
+  // Keyed the way the report keys one — by type and name together, not by name
+  // alone. A metric and a span may share a name, and the entry carries the
+  // declaration everything below it is drawn against, so merging two would
+  // render one signal's columns against the other's attribute list with
+  // nothing on the page to say so.
   const signals = new Map();
   for (const target of targets) {
     for (const signal of target.signals) {
       const declared =
         report.registry?.[target.runner]?.[`${signal.type}s`]?.[signal.name] ??
         null;
-      let entry = signals.get(signal.name);
+      const key = signalKey(signal.type, signal.name);
+      let entry = signals.get(key);
       if (!entry) {
         entry = {
+          key,
           name: signal.name,
           type: signal.type,
-          kind: declared?.kind ?? null,
+          kind: null,
           runner: target.runner,
-          attributes: declared?.attributes ?? null,
+          attributes: null,
           rows: [],
         };
-        signals.set(signal.name, entry);
+        signals.set(key, entry);
+      }
+      // First declaration wins, but an absent one never does: a target whose
+      // runner does not declare the signal must not be what decides the whole
+      // column set has nothing to compare against.
+      if (entry.attributes === null && declared?.attributes) {
+        entry.attributes = declared.attributes;
+        entry.kind = declared.kind ?? null;
+        entry.runner = target.runner;
       }
       entry.rows.push({ target, signal });
     }
@@ -119,6 +135,9 @@ function index(report) {
 
   return { report, targets, signals };
 }
+
+/** How a signal is addressed — in the index above, and in a `#/signals/` link. */
+const signalKey = (type, name) => `${type}:${name}`;
 
 /**
  * The least that still tells a set of targets apart.

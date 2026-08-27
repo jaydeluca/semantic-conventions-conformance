@@ -1,7 +1,13 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""The verbs, and the freshness gate CI leans on."""
+"""The verbs, and the freshness check a maintainer leans on.
+
+`check` is deliberately not a CI gate — resolving the denominator needs weaver
+and a fetched registry, which `report.yml` argues is not worth making every
+scenario change wait on. It is what tells you locally that the committed report
+is behind the tree, so these tests are the only thing standing behind it.
+"""
 
 from __future__ import annotations
 

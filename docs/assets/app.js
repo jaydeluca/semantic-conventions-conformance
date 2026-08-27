@@ -10,10 +10,13 @@
 import { load } from './data.js';
 import { el } from './ui.js';
 
-import signals from './views/signals.js';
+// Imported as a namespace rather than a default, so a view can also export a
+// `title` for the tab and the history entry — the part that makes a deep link
+// worth having.
+import * as signals from './views/signals.js';
 
 // Two entries for the one view: `#/` is the site's front door and
-// `#/signals/<name>` is what the signal selector writes. They stay separate so
+// `#/signals/<key>` is what the signal selector writes. They stay separate so
 // the front door can be repointed at a landing view without touching the
 // deep link.
 const ROUTES = [
@@ -23,8 +26,20 @@ const ROUTES = [
 
 const main = document.querySelector('main');
 
+// A hash is user-editable, and `decodeURIComponent` throws on a stray percent
+// (`#/signals/50%`). That is a bad address, not an unreadable report, so it
+// resolves to the front door like any other unmatched path — the alternative
+// is a URIError escaping the render and being reported as a failed load.
+function decode(hash) {
+  try {
+    return decodeURIComponent(hash);
+  } catch {
+    return '';
+  }
+}
+
 function resolve(hash) {
-  const path = decodeURIComponent(hash.replace(/^#/, '')) || '/';
+  const path = decode(hash.replace(/^#/, '')) || '/';
   for (const route of ROUTES) {
     const found = path.match(route.match);
     if (found) return { route, argument: found[1] ?? null };
@@ -34,15 +49,17 @@ function resolve(hash) {
 
 function render(data) {
   const { route, argument } = resolve(location.hash);
+  let title = `${route.name} · conformance`;
   try {
-    main.replaceChildren(route.view(data, argument));
+    main.replaceChildren(route.view.default(data, argument));
+    title = route.view.title?.(data, argument) ?? title;
   } catch (error) {
     console.error(error);
     main.replaceChildren(
       el('p', { class: 'empty', text: `Could not render this view: ${error.message}` }),
     );
   }
-  document.title = `${route.name} · conformance`;
+  document.title = title;
 }
 
 function provenance(data) {
@@ -67,7 +84,7 @@ load()
     console.error(error);
     main.replaceChildren(
       el('div', { class: 'note' }, [
-        el('p', { html: '<strong>The report could not be loaded.</strong>' }),
+        el('p', {}, [el('strong', { text: 'The report could not be loaded.' })]),
         el('p', {
           text:
             'The page reads data/conformance.json over fetch, which a browser ' +

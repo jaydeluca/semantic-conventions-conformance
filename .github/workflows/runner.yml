@@ -148,7 +148,8 @@ jobs:
             -e tools/http/test-client/python \
             -e tools/java \
             -e tools/js \
-            -e tools/dotnet
+            -e tools/dotnet \
+            -e tools/report
 
       - name: Run pyright
         run: python -m pyright

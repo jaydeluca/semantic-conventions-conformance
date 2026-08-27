@@ -20,14 +20,30 @@ import {
 } from '../data.js';
 import { el, levelLegend, toolbar } from '../ui.js';
 
-export default function signals(data, name) {
+/**
+ * The signal a route names, and whether it named one that exists.
+ *
+ * Shared with `title` below so the tab and the heading cannot disagree about
+ * which signal is on screen.
+ */
+function choose(data, key) {
   const available = [...data.signals.values()].sort(
     (a, b) => b.rows.length - a.rows.length || a.name.localeCompare(b.name),
   );
+  const chosen = key ? data.signals.get(key) : undefined;
+  return { available, chosen: chosen ?? available[0], unknown: key && !chosen };
+}
+
+export function title(data, key) {
+  const { chosen } = choose(data, key);
+  return chosen ? `${chosen.name} · conformance` : 'signals · conformance';
+}
+
+export default function signals(data, key) {
+  const { available, chosen, unknown } = choose(data, key);
   if (!available.length) {
     return el('p', { class: 'empty', text: 'No signals in the report.' });
   }
-  const chosen = data.signals.get(name) ?? available[0];
 
   const body = el('div');
   const bar = toolbar({
@@ -37,8 +53,9 @@ export default function signals(data, name) {
         key: 'signal',
         label: 'Signal',
         all: null,
+        value: chosen.key,
         options: available.map((signal) => ({
-          value: signal.name,
+          value: signal.key,
           label: `${signal.name} (${signal.rows.length})`,
         })),
       },
@@ -60,7 +77,7 @@ export default function signals(data, name) {
       },
     ],
     onChange: (state) => {
-      if (state.signal && state.signal !== chosen.name) {
+      if (state.signal && state.signal !== chosen.key) {
         location.hash = `#/signals/${encodeURIComponent(state.signal)}`;
         return '';
       }
@@ -92,15 +109,22 @@ export default function signals(data, name) {
     },
   });
 
-  // Reflect the route into the select without re-firing the change handler.
-  const select = bar.node.querySelector('select');
-  if (select) select.value = chosen.name;
-
   return el('div', {}, [
     el('h2', {}, [
       'Signal parity: ',
       el('span', { class: 'mono', text: chosen.name }),
     ]),
+    // A link can outlive the signal it names — a registry ref that renames one
+    // is enough. Say so rather than quietly showing something else, which
+    // would read as the link having worked.
+    unknown &&
+      el('p', { class: 'note' }, [
+        el('strong', { text: 'No such signal in this report: ' }),
+        el('span', { class: 'mono', text: key }),
+        '. Showing ',
+        el('span', { class: 'mono', text: chosen.name }),
+        ' instead.',
+      ]),
     el('p', {
       class: 'lede',
       text:
