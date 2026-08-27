@@ -53,3 +53,25 @@ def test_a_layout_too_shallow_to_read_is_an_error(tmp_path: Path) -> None:
     write_target(tmp_path, "demo/python/demo")
     with pytest.raises(ValueError, match="domain"):
         discover(tmp_path)
+
+
+def test_what_a_dependency_or_a_build_left_behind_is_not_a_target(
+    tmp_path: Path,
+) -> None:
+    """A checkout that has run the scenarios is a checkout full of artifacts.
+
+    `uv run` leaves a `.venv` beside the scenario, `npm ci` a `node_modules`,
+    Gradle a `build` — and a package inside any of those is free to ship a file
+    called `conformance.yaml`. Discovered, it would invent a target whose path
+    does not name a domain, so the report would fail to build on the machine of
+    whoever had just run the scenarios.
+    """
+    write_target(tmp_path, "demo/python/demo/opentelemetry-demo")
+    for artifact in (".venv", "node_modules", "build"):
+        write_target(
+            tmp_path, f"demo/python/demo/opentelemetry-demo/{artifact}/vendored"
+        )
+
+    assert [t.id for t in discover(tmp_path)] == [
+        "demo/python/demo/opentelemetry-demo"
+    ]

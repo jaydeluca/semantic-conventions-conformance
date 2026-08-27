@@ -1,12 +1,17 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""The report this repo actually produces, checked against the committed
-reductions rather than against data a test invented.
+"""The report this repo actually produces, read as the site reads it.
 
-Asserted against the tree rather than a census written down here: scenarios
-land continuously and every pin is on a Renovate schedule, so a hardcoded count
-would fail on the next unrelated pull request.
+Invariants of the report alone, never a comparison against the scenario tree.
+The report is a generated artifact that `.github/workflows/report.yml` rebuilds
+nightly, so between a scenario landing on main and that rebuild the two are
+legitimately out of step — and a test that compared them would fail every open
+pull request, none of which is the one that moved the tree.
+
+That leaves the tree-derived properties to the unit tests, which build their
+own fixtures and do not care what is committed: `test_discover` for which
+directories become targets, `test_aggregate` for what a target carries.
 
 Skipped when the committed report is absent — rebuilding it needs weaver and a
 fetched registry, which not every checkout has.
@@ -14,7 +19,6 @@ fetched registry, which not every checkout has.
 
 from __future__ import annotations
 
-import collections
 import json
 from pathlib import Path
 
@@ -22,7 +26,6 @@ import pytest
 
 ROOT = Path(__file__).parents[3]
 REPORT = ROOT / "docs" / "data" / "conformance.json"
-SCENARIOS = ROOT / "scenarios"
 
 pytestmark = pytest.mark.skipif(
     not REPORT.is_file(), reason="docs/data/conformance.json is not built"
@@ -38,17 +41,6 @@ def targets(report: dict[str, object]) -> list[dict[str, object]]:
     found = report["targets"]
     assert isinstance(found, list)
     return found
-
-
-def test_every_conformance_directory_is_in_the_report(
-    report: dict[str, object],
-) -> None:
-    """One target per committed reduction, none dropped and none invented."""
-    on_disk = {
-        path.parent.relative_to(SCENARIOS).as_posix()
-        for path in SCENARIOS.rglob("data.json")
-    }
-    assert {t["id"] for t in targets(report)} == on_disk
 
 
 def test_the_domain_and_language_are_the_ones_the_path_names(
@@ -67,19 +59,16 @@ def test_the_domain_and_language_are_the_ones_the_path_names(
         assert target["side"] in (None, rest[-1])
 
 
-def test_findings_are_carried_over_exactly(report: dict[str, object]) -> None:
-    """Every finding, once: neither summarised away nor counted twice."""
-    on_disk: collections.Counter[str] = collections.Counter()
-    for path in SCENARIOS.rglob("data.json"):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        on_disk.update(finding["id"] for finding in data.get("findings", []))
+def test_the_finding_count_agrees_with_the_findings(
+    report: dict[str, object],
+) -> None:
+    """The per-target count the site sorts and filters on agrees with the
+    list it is a count of.
 
-    kinds = collections.Counter(
-        finding["id"] for t in targets(report) for finding in t["findings"]
-    )
-    assert kinds == on_disk
-    # And the per-target count the site sorts and filters on agrees with the
-    # list it is a count of.
+    That findings reach the report unaltered is
+    `test_aggregate.test_findings_pass_through_verbatim`; here it is only the
+    denormalised count that could drift from what it counts.
+    """
     for target in targets(report):
         assert target["summary"]["findings"] == len(target["findings"])
 

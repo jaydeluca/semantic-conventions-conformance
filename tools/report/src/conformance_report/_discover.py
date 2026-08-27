@@ -13,8 +13,10 @@ rather than of the runner::
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from opentelemetry.conformance import PackageSpec, load_spec
 
@@ -25,6 +27,46 @@ SCENARIO_ROOT = "scenarios"
 # HTTP gives each side its own directory: coverage reduces everything a package
 # emitted, so a server run must not be able to hide a client span.
 _SIDES = ("client", "server")
+
+# A checkout that has run the scenarios holds an interpreter, a package tree
+# and build output inside the very directories being walked, and a `data.json`
+# or `conformance.yaml` in one of those belongs to a dependency rather than to
+# this repo. Pruned rather than filtered afterwards, so the walk does not
+# descend into a `node_modules` at all.
+_NOT_SOURCE = frozenset(
+    {
+        ".git",
+        ".gradle",
+        ".venv",
+        "__pycache__",
+        "bin",
+        "build",
+        "dist",
+        "node_modules",
+        "obj",
+        "out",
+        "output",
+        "target",
+        "venv",
+    }
+)
+
+
+def walk(scenarios: Path, name: str) -> Iterator[Path]:
+    """Every file called ``name`` under ``scenarios``, top-down.
+
+    ``Path.rglob`` would also return the ones a dependency or a build brought
+    into the tree; see :data:`_NOT_SOURCE`. Callers that care about the order
+    of the whole set sort what comes back.
+    """
+    for directory, subdirectories, files in os.walk(scenarios):
+        subdirectories[:] = sorted(
+            subdirectory
+            for subdirectory in subdirectories
+            if subdirectory not in _NOT_SOURCE
+        )
+        if name in files:
+            yield Path(directory) / name
 
 
 @dataclass(frozen=True)
@@ -70,7 +112,7 @@ def discover(root: Path) -> list[Target]:
     """
     scenarios = root / SCENARIO_ROOT
     found: list[Target] = []
-    for spec_file in sorted(scenarios.rglob(SPEC_FILE)):
+    for spec_file in sorted(walk(scenarios, SPEC_FILE)):
         directory = spec_file.parent
         if not (directory / DATA_FILE).is_file():
             continue
