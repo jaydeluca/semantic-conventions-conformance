@@ -111,12 +111,12 @@ classes than the row, the row says so.
 | Library | Classes | Implementations |
 | --- | --- | --- |
 | `agno` | invoke_agent, automatic_tool_calling | `opentelemetry-agno` |
-| `anthropic` | inference, streaming, tool_calling, automatic_tool_calling, multimodal | `opentelemetry-anthropic`, `opentelemetry-langchain-anthropic`<br>no automatic_tool_calling in `opentelemetry-langchain-anthropic`: langchain binds tools but does not run them outside an agent |
-| `bedrock` | Bedrock Converse: inference, streaming, tool_calling | `opentelemetry-botocore` |
-| `google-genai` | every client class, plus automatic_tool_calling | `opentelemetry-google-genai` |
-| `langchain` | workflow, invoke_agent, automatic_tool_calling | `opentelemetry-langchain` |
+| `anthropic` | inference, streaming, tool_calling, automatic_tool_calling, multimodal | `opentelemetry-anthropic`, `opentelemetry-langchain-anthropic`, `openinference`, `openllmetry`<br>no automatic_tool_calling in `opentelemetry-langchain-anthropic`: langchain binds tools but does not run them outside an agent |
+| `bedrock` | Bedrock Converse: inference, streaming, tool_calling | `opentelemetry-botocore`, `openinference`, `openllmetry` |
+| `google-genai` | every client class, plus automatic_tool_calling | `opentelemetry-google-genai`, `openinference`, `openllmetry` |
+| `langchain` | workflow, invoke_agent, automatic_tool_calling | `opentelemetry-langchain`, `openinference`, `openllmetry` |
 | `openai` | inference, streaming, tool_calling, structured_output, multimodal, embeddings | `opentelemetry-openai`, `opentelemetry-langchain-openai`, `openinference`, `openllmetry` |
-| `openai-agents` | invoke_agent, automatic_tool_calling. The Agents SDK wraps every run in a trace, so the workflow span comes with each of those rather than from a scenario of its own | `opentelemetry-openai-agents` |
+| `openai-agents` | invoke_agent, automatic_tool_calling. The Agents SDK wraps every run in a trace, so the workflow span comes with each of those rather than from a scenario of its own | `opentelemetry-openai-agents`, `openinference`, `openllmetry` |
 | `qwen-agent` | invoke_agent, automatic_tool_calling. Assistant runs its Memory sub-agent, so each run carries a second agent span | `opentelemetry-qwen-agent` |
 
 The conventions also cover retrieval, memory and planning. No instrumentation
