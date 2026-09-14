@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-  # So a site fix can be published without a commit that touches the report.
+    # Nothing outside `docs/` reaches the published site.
+    paths:
+      - "docs/**"
+  # So the site can be republished without a commit that touches `docs/`.
   workflow_dispatch:
 
 permissions:

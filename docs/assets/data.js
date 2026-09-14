@@ -53,6 +53,32 @@ const LANGUAGE_SLOTS = 6;
 export const languageColor = (language) =>
   `var(--lang-${LANGUAGE_SLOT.get(language) ?? LANGUAGE_SLOTS})`;
 
+/** Both destinations spell `.` and `_` as `-`: the documentation in page
+ *  paths and anchors, the registry in directory names. */
+const dashed = (text) => text.replaceAll(/[._]/g, "-");
+
+/**
+ * Where an attribute is documented. opentelemetry.io publishes a page per
+ * namespace of the released registry; the incubating GenAI registry is not
+ * published there, so `gen_ai.*` goes to the pinned source it was read from.
+ *
+ * @param {string} attribute a declared attribute, e.g. `http.request.method`
+ * @param {Pin} [pin] the registry pin of the runner that declared it
+ * @returns {string|null} a URL, or null for `gen_ai.*` without a pin
+ */
+export function attributeUrl(attribute, pin) {
+  const [namespace] = attribute.split(".");
+  if (namespace === "gen_ai") {
+    if (!pin) return null;
+    const { registry_repo: repo, registry_ref: ref, registry_dir: dir } = pin;
+    return `https://github.com/${repo}/tree/${ref}/${dir}/${dashed(namespace)}`;
+  }
+  return (
+    "https://opentelemetry.io/docs/specs/semconv/registry/attributes/" +
+    `${dashed(namespace)}/#${dashed(attribute)}`
+  );
+}
+
 async function fetchJson(url) {
   const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) throw new Error(`${url}: ${response.status}`);
@@ -120,11 +146,13 @@ const signalKey = (type, name) => `${type}:${name}`;
  * @property {string|null} [backend]
  * @property {ReportSignal[]} signals
  * @typedef {{attributes: Object<string,string>, kind?: string}} Declaration
+ * @typedef {{registry_repo: string, registry_ref: string,
+ *   registry_dir: string}} Pin one runner's registry pin
  * @typedef {object} Report
  * @property {number} schema_version
  * @property {Target[]} targets
  * @property {Object<string,Object<string,Object<string,Declaration>>>} registry
- * @property {Object<string,{registry_repo: string, registry_ref: string, registry_dir: string}>} domains
+ * @property {Object<string,Pin>} domains
  */
 
 /**

@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { distinguish, load } from "../assets/data.js";
+import { attributeUrl, distinguish, load } from "../assets/data.js";
 import { report, target } from "./fixtures.js";
 
 test("load fetches the report and rejects unsupported schemas and HTTP failures", async (t) => {
@@ -89,6 +89,56 @@ test("span and metric names do not collide, and unknown declarations stay unknow
   const data = await load();
   assert.equal(data.signals.size, 2);
   assert.equal(data.signals.get("span:shared").attributes, null);
+});
+
+test("attributes link to the registry that declares them", () => {
+  const docs = "https://opentelemetry.io/docs/specs/semconv/registry";
+  assert.equal(
+    attributeUrl("http.request.method"),
+    `${docs}/attributes/http/#http-request-method`,
+  );
+  assert.equal(
+    attributeUrl("user_agent.original"),
+    `${docs}/attributes/user-agent/#user-agent-original`,
+  );
+
+  const pin = {
+    registry_repo: "open-telemetry/semantic-conventions-genai",
+    registry_ref: "4a39b6ef",
+    registry_dir: "model",
+  };
+  assert.equal(
+    attributeUrl("gen_ai.request.model", pin),
+    "https://github.com/open-telemetry/semantic-conventions-genai/tree/4a39b6ef/model/gen-ai",
+  );
+  assert.equal(attributeUrl("gen_ai.request.model"), null);
+  // Standard attributes the GenAI registry also declares are published, so
+  // they go to the documentation rather than to that registry's source.
+  assert.equal(
+    attributeUrl("error.type", pin),
+    `${docs}/attributes/error/#error-type`,
+  );
+});
+
+test("every attribute in the committed report resolves to a link", async () => {
+  const document = JSON.parse(
+    await readFile(
+      new URL("../data/conformance.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  for (const [runner, kinds] of Object.entries(document.registry)) {
+    for (const declarations of Object.values(kinds)) {
+      for (const declaration of Object.values(declarations)) {
+        for (const attribute of Object.keys(declaration?.attributes ?? {})) {
+          assert.ok(
+            attributeUrl(attribute, document.domains[runner]),
+            `${attribute} (${runner}) has no registry link`,
+          );
+        }
+      }
+    }
+  }
 });
 
 test("database labels distinguish both backend and instrumentation", () => {

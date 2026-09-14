@@ -6,6 +6,7 @@
 import {
   LEVELS,
   LEVEL_LABEL,
+  attributeUrl,
   distinguish,
   fullLabel,
   languageColor,
@@ -131,7 +132,9 @@ export default function signals(data, key) {
           : state.level === "scored"
             ? ["required", "recommended"]
             : LEVELS;
-      body.replaceChildren(heatmap(chosen, rows, levels));
+      body.replaceChildren(
+        heatmap(chosen, rows, levels, data.report.domains?.[chosen.runner]),
+      );
       return `${rows.length} target${rows.length === 1 ? "" : "s"}`;
     },
   });
@@ -166,7 +169,7 @@ export default function signals(data, key) {
   ]);
 }
 
-function heatmap(signal, rows, levels) {
+function heatmap(signal, rows, levels, pin) {
   if (!rows.length) {
     return el("p", { class: "empty", text: "No targets match those filters." });
   }
@@ -208,7 +211,7 @@ function heatmap(signal, rows, levels) {
             `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
           ]),
         ]),
-        ...attributes.map((attribute) => attributeRow(attribute, columns)),
+        ...attributes.map((attribute) => attributeRow(attribute, columns, pin)),
       ]),
     );
     drawn += attributes.length;
@@ -235,11 +238,16 @@ function heatmap(signal, rows, levels) {
 }
 
 /** One attribute, across every column, and how many of them carried it. */
-function attributeRow(attribute, columns) {
+function attributeRow(attribute, columns, pin) {
   const emitted = columns.map((row) => row.signal.emitted.includes(attribute));
   const count = emitted.filter(Boolean).length;
+  const url = attributeUrl(attribute, pin);
   return el("tr", {}, [
-    el("th", { class: "attr", scope: "row", text: attribute }),
+    el("th", { class: "attr", scope: "row" }, [
+      url
+        ? el("a", { href: url, rel: "noreferrer", text: attribute })
+        : attribute,
+    ]),
     ...emitted.map((yes, i) =>
       el("td", { class: `cell ${yes ? "cell-yes" : "cell-no"}` }, [
         el("span", {
@@ -324,11 +332,28 @@ function caption(columns) {
   const side = shared((t) => t.side);
   const instrumentation = shared((t) => t.instrumentation_library);
 
-  const parts = [`${columns.length} column${columns.length === 1 ? "" : "s"}`];
-  if (language) parts.push(`every one ${language}`);
-  if (side) parts.push(`every one ${side}-side`);
-  if (instrumentation) parts.push(`all through ${instrumentation}`);
-  return el("p", { class: "caption", text: parts.join(" · ") });
+  // The language carries its own colour here, as the bands and column
+  // underlines do, so it is not lost in a run of plain text.
+  const parts = [
+    [`${columns.length} column${columns.length === 1 ? "" : "s"}`],
+  ];
+  if (language) {
+    parts.push([
+      "every one ",
+      el("b", {
+        class: "lang",
+        text: language,
+        style: `color:${languageColor(language)}`,
+      }),
+    ]);
+  }
+  if (side) parts.push([`every one ${side}-side`]);
+  if (instrumentation) parts.push([`all through ${instrumentation}`]);
+  return el(
+    "p",
+    { class: "caption" },
+    parts.flatMap((part, i) => (i ? [" · ", ...part] : part)),
+  );
 }
 
 /**

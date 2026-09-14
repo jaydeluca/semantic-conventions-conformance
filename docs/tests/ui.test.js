@@ -85,6 +85,28 @@ test("filters columns and requirement levels without losing registry rows", asyn
   assert.match(main.textContent, /No targets match/);
 });
 
+test("attribute rows link to the registry, and the caption colours the language", async (t) => {
+  const window = await setup(t);
+  const main = window.document.querySelector("main");
+  main.replaceChildren(signals(await load(), null));
+
+  const links = [...main.querySelectorAll("th.attr a")];
+  assert.deepEqual(
+    links.map((link) => link.textContent),
+    ["db.system", "db.namespace"],
+  );
+  assert.equal(
+    links[0].getAttribute("href"),
+    "https://opentelemetry.io/docs/specs/semconv/registry/attributes/db/#db-system",
+  );
+  assert.equal(links[0].getAttribute("rel"), "noreferrer");
+
+  const language = main.querySelector(".caption .lang");
+  assert.equal(language.textContent, "java");
+  assert.match(language.getAttribute("style"), /--lang-\d/);
+  assert.match(main.querySelector(".caption").textContent, /1 column · every/);
+});
+
 test("empty reports and unknown signals give useful messages", async (t) => {
   await setup(t, report([]));
   assert.equal(

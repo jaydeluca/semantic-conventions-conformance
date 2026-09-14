@@ -339,6 +339,15 @@ td.num {
   border-right: 1px solid var(--line-strong);
   color: var(--ink);
 }
+/* The attribute name is the row's label first and a registry link second, so it
+   keeps the row's colour and only underlines under the pointer. */
+.heatmap th.attr a {
+  color: inherit;
+  text-decoration: none;
+}
+.heatmap th.attr a:hover {
+  text-decoration: underline;
+}
 .heatmap thead th.attr {
   z-index: 3;
   background: var(--surface-2);
