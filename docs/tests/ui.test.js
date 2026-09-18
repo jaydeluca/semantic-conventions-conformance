@@ -7,6 +7,7 @@ import { setImmediate } from "node:timers/promises";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { load } from "../assets/data.js";
+import { split } from "../assets/route.js";
 import signals from "../assets/views/signals.js";
 import { report, target } from "./fixtures.js";
 
@@ -20,6 +21,8 @@ async function setup(t, document = report(), hash = "") {
     document: dom.window.document,
     Node: dom.window.Node,
     location: dom.window.location,
+    history: dom.window.history,
+    navigator: dom.window.navigator,
     addEventListener: dom.window.addEventListener.bind(dom.window),
     scrollTo: t.mock.fn(),
   };
@@ -43,6 +46,55 @@ async function setup(t, document = report(), hash = "") {
   return dom.window;
 }
 
+/** Click, press and read the controls the way someone using them would. */
+function driver(window, main) {
+  const fire = (node, type) => node.dispatchEvent(new window.Event(type));
+  const named = (selector, text) =>
+    [...main.querySelectorAll(selector)].find((node) =>
+      node.textContent.startsWith(text),
+    );
+  return {
+    search(text) {
+      const input = main.querySelector("input.search");
+      input.value = text;
+      fire(input, "input");
+    },
+    language: (name) => named(".pill", name).click(),
+    level: (label) => named(".segment", label).click(),
+    select(label, value) {
+      const node = main.querySelector(`select[aria-label="${label}"]`);
+      node.value = value;
+      fire(node, "change");
+    },
+    chip: (text) => named(".chip", text).click(),
+    columns: () => main.querySelectorAll("th.col").length,
+    count: () => main.querySelector(".count").textContent,
+    chips: () =>
+      [...main.querySelectorAll(".chip")].map((chip) => chip.textContent),
+    pressed: () =>
+      [...main.querySelectorAll('.pill[aria-pressed="true"]')].map(
+        (pill) => pill.textContent,
+      ),
+    picker: () => main.querySelector(".picker"),
+    options: () =>
+      [...main.querySelectorAll(".palette-option")].map(
+        (option) => option.textContent,
+      ),
+    type(key) {
+      const query = main.querySelector(".palette-query");
+      query.value = key;
+      fire(query, "input");
+    },
+    press(key) {
+      main
+        .querySelector(".palette-query")
+        .dispatchEvent(
+          new window.KeyboardEvent("keydown", { key, bubbles: true }),
+        );
+    },
+  };
+}
+
 test("filters columns and requirement levels without losing registry rows", async (t) => {
   const document = report([
     target(),
@@ -59,30 +111,87 @@ test("filters columns and requirement levels without losing registry rows", asyn
   const window = await setup(t, document);
   const main = window.document.querySelector("main");
   main.replaceChildren(signals(await load(), null));
-  const select = (label, value) => {
-    const node = main.querySelector(`select[aria-label="${label}"]`);
-    node.value = value;
-    node.dispatchEvent(new window.Event("change"));
-  };
-  assert.equal(main.querySelectorAll("th.col").length, 2);
-  select("Language", "python");
-  assert.equal(main.querySelectorAll("th.col").length, 1);
+  const ui = driver(window, main);
+
+  assert.equal(ui.columns(), 2);
+  ui.language("python");
+  assert.equal(ui.columns(), 1);
   assert.equal(main.querySelectorAll("td.cell-yes").length, 1);
   assert.equal(main.querySelectorAll("td.cell-no").length, 1);
-  select("Levels", "required");
+  ui.level("Required only");
   assert.equal(main.querySelectorAll("td.cell-yes").length, 0);
   assert.equal(main.querySelectorAll("td.cell-no").length, 1);
-  select("Language", "");
-  select("Library", "jdbc");
-  assert.equal(main.querySelectorAll("th.col").length, 1);
-  select("Library", "");
-  const input = main.querySelector("input");
-  input.value = "postgresql";
-  input.dispatchEvent(new window.Event("input"));
-  assert.equal(main.querySelectorAll("th.col").length, 1);
-  input.value = "no such target";
-  input.dispatchEvent(new window.Event("input"));
+  ui.language("python");
+  ui.select("Library", "jdbc");
+  assert.equal(ui.columns(), 1);
+  ui.select("Library", "");
+  ui.search("postgresql");
+  assert.equal(ui.columns(), 1);
+  ui.search("no such target");
   assert.match(main.textContent, /No targets match/);
+});
+
+test("language pills combine instead of replacing each other", async (t) => {
+  const document = report([
+    target(),
+    target({ id: "py", language: "python", instrumented_library: "psycopg" }),
+    target({ id: "go", language: "go", instrumented_library: "pgx" }),
+  ]);
+  const window = await setup(t, document);
+  const main = window.document.querySelector("main");
+  main.replaceChildren(signals(await load(), null));
+  const ui = driver(window, main);
+
+  // The select this replaced could show one language or all of them.
+  ui.language("java");
+  ui.language("go");
+  assert.equal(ui.columns(), 2);
+  assert.equal(ui.count(), "2 of 3 targets");
+  assert.deepEqual(ui.pressed(), ["go1", "java1"]);
+
+  // Every active filter is named, and a chip takes its own filter back off.
+  assert.deepEqual(ui.chips(), ["go ✕", "java ✕", "Clear all"]);
+  ui.chip("go");
+  assert.equal(ui.columns(), 1);
+  assert.deepEqual(ui.pressed(), ["java1"]);
+  ui.chip("Clear all");
+  assert.equal(ui.columns(), 3);
+  assert.deepEqual(ui.chips(), []);
+  assert.equal(ui.count(), "3 targets");
+});
+
+test("filters are a link, and a stale link does not filter everything away", async (t) => {
+  const document = report([
+    target(),
+    target({ id: "py", language: "python", instrumented_library: "psycopg" }),
+  ]);
+  const window = await setup(t, document, "#/signals/metric%3Adb.duration");
+  const main = window.document.querySelector("main");
+  const data = await load();
+
+  main.replaceChildren(
+    signals(data, "metric:db.duration", new URLSearchParams()),
+  );
+  driver(window, main).language("python");
+  assert.equal(
+    window.location.hash,
+    "#/signals/metric%3Adb.duration?lang=python",
+  );
+
+  // What the link above restores to, reading it back the way app.js does.
+  const { path, params } = split(window.location.hash);
+  assert.equal(path, "/signals/metric:db.duration");
+  main.replaceChildren(signals(data, "metric:db.duration", params));
+  const restored = driver(window, main);
+  assert.equal(restored.columns(), 1);
+  assert.deepEqual(restored.chips(), ["python ✕", "Clear all"]);
+
+  // A language that has since left the report cannot filter to nothing.
+  main.replaceChildren(
+    signals(data, "metric:db.duration", new URLSearchParams("lang=cobol")),
+  );
+  assert.equal(driver(window, main).columns(), 2);
+  assert.equal(window.location.hash, "#/signals/metric%3Adb.duration");
 });
 
 test("the distribution filter excludes what a substring search cannot", async (t) => {
@@ -120,7 +229,7 @@ test("the distribution filter excludes what a substring search cannot", async (t
   const window = await setup(t, document);
   const main = window.document.querySelector("main");
   main.replaceChildren(signals(await load(), null));
-  const input = main.querySelector("input");
+  const ui = driver(window, main);
   const select = main.querySelector('select[aria-label="Distribution"]');
 
   assert.deepEqual(
@@ -129,14 +238,12 @@ test("the distribution filter excludes what a substring search cannot", async (t
   );
 
   // The search alone drags in the library column.
-  input.value = "opentelemetry-java";
-  input.dispatchEvent(new window.Event("input"));
-  assert.equal(main.querySelectorAll("th.col").length, 3);
+  ui.search("opentelemetry-java");
+  assert.equal(ui.columns(), 3);
 
-  select.value = "opentelemetry-javaagent";
-  select.dispatchEvent(new window.Event("change"));
-  assert.equal(main.querySelectorAll("th.col").length, 2);
-  assert.match(main.querySelector(".count").textContent, /^2 targets$/);
+  ui.select("Distribution", "opentelemetry-javaagent");
+  assert.equal(ui.columns(), 2);
+  assert.match(ui.count(), /^2 of 3 targets$/);
 });
 
 test("attribute rows link to the registry, and the band colours the language", async (t) => {
@@ -191,7 +298,8 @@ test("app loads a deep link, skips to content, and follows signal changes", asyn
   await import("../assets/app.js");
   await setImmediate();
   const main = window.document.querySelector("main");
-  assert.match(main.querySelector("h2").textContent, /db.duration/);
+  const ui = driver(window, main);
+  assert.match(ui.picker().textContent, /db\.duration/);
   assert.match(
     window.document.querySelector("#provenance").textContent,
     /1 targets/,
@@ -203,13 +311,30 @@ test("app loads a deep link, skips to content, and follows signal changes", asyn
   assert.equal(main.firstChild, content);
   assert.equal(globalThis.scrollTo.mock.callCount(), 0);
 
-  const select = main.querySelector('select[aria-label="Signal"]');
-  select.value = "metric:db.connections";
-  select.dispatchEvent(new window.Event("change"));
+  // The palette searches and groups every signal, and picking one routes.
+  ui.picker().click();
+  assert.deepEqual(ui.options(), [
+    "metricdb.connections1",
+    "metricdb.duration1",
+  ]);
+  ui.type("connect");
+  assert.deepEqual(ui.options(), ["metricdb.connections1"]);
+  ui.press("Enter");
   assert.equal(window.location.hash, "#/signals/metric%3Adb.connections");
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));
-  assert.match(main.querySelector("h2").textContent, /db.connections/);
+  assert.match(driver(window, main).picker().textContent, /db\.connections/);
   assert.equal(window.document.title, "db.connections · conformance");
+  assert.equal(globalThis.scrollTo.mock.callCount(), 1);
+
+  // A filter change rewrites the query, which must not re-render the view.
+  const kept = main.firstChild;
+  driver(window, main).search("jdbc");
+  assert.equal(
+    window.location.hash,
+    "#/signals/metric%3Adb.connections?q=jdbc",
+  );
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.equal(main.firstChild, kept);
 
   window.location.hash = "#/signals/50%";
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));

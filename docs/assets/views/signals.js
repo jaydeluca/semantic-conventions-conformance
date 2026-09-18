@@ -12,7 +12,15 @@ import {
   languageColor,
   levelColor,
 } from "../data.js";
-import { el, levelLegend, toolbar } from "../ui.js";
+import { el, filterBar, levelLegend, palette } from "../ui.js";
+import { go, setParams } from "../route.js";
+
+/** The three requirement-level views, the first being the default. */
+const LEVEL_CHOICES = [
+  { value: "", label: "All levels" },
+  { value: "scored", label: "Required + recommended" },
+  { value: "required", label: "Required only" },
+];
 
 /**
  * Select a signal, falling back to the most frequently emitted signal.
@@ -45,74 +53,125 @@ export function title(data, key) {
 }
 
 /**
+ * Every signal as a palette entry, grouped by the domain it was read from and
+ * ordered inside a domain by how many targets emitted it.
+ *
+ * @param {import('../data.js').Signal[]} available every signal in the report
+ * @returns {import('../ui.js').PaletteItem[]}
+ */
+function entries(available) {
+  const domain = (signal) => signal.rows[0]?.target.domain ?? signal.runner;
+  return available
+    .slice()
+    .sort(
+      (a, b) =>
+        domain(a).localeCompare(domain(b)) ||
+        b.rows.length - a.rows.length ||
+        a.name.localeCompare(b.name),
+    )
+    .map((signal) => ({
+      value: signal.key,
+      name: signal.name,
+      group: domain(signal),
+      badge: signal.type,
+      count: signal.rows.length,
+    }));
+}
+
+/**
+ * Read the filter state out of a link. The keys are short because they are
+ * seen: `?lang=java,go&level=required` is a URL somebody can edit by hand.
+ *
+ * @param {URLSearchParams} [params] the query on the current route
+ * @returns {Object<string,string|string[]>} a {@link filterBar} state
+ */
+function restore(params) {
+  const read = (key) => params?.get(key) ?? "";
+  const languages = read("lang");
+  return {
+    q: read("q"),
+    languages: languages ? languages.split(",").filter(Boolean) : [],
+    level: read("level"),
+    distribution: read("dist"),
+    library: read("lib"),
+  };
+}
+
+/** The inverse of {@link restore}. */
+function remember(state) {
+  setParams({
+    q: state.q,
+    lang: state.languages.join(","),
+    level: state.level,
+    dist: state.distribution,
+    lib: state.library,
+  });
+}
+
+/**
  * Render the signal parity heatmap.
  *
  * @param {import('../data.js').Data} data the indexed report
  * @param {string|null} key a `${type}:${name}` signal key from the route
+ * @param {URLSearchParams} [params] the filter state on the current route
  * @returns {HTMLElement} the view, to be appended to `<main>`
  */
-export default function signals(data, key) {
+export default function signals(data, key, params) {
   const { available, chosen, unknown } = choose(data, key);
   if (!available.length) {
     return el("p", { class: "empty", text: "No signals in the report." });
   }
 
+  const facet = (pick) => [...new Set(chosen.rows.map(pick))].sort();
   const body = el("div");
-  const bar = toolbar({
-    search: "Filter columns by library or instrumentation…",
-    filters: [
+
+  const picker = palette({
+    label: "Signal",
+    items: entries(available),
+    value: chosen.key,
+    onPick: (value) => go(`/signals/${encodeURIComponent(value)}`),
+  });
+
+  const bar = filterBar({
+    search: "Filter columns by library or language…",
+    pills: [
       {
-        key: "signal",
-        label: "Signal",
-        all: null,
-        value: chosen.key,
-        options: available.map((signal) => ({
-          value: signal.key,
-          label: `${signal.name} (${signal.rows.length})`,
+        key: "languages",
+        label: "Language",
+        options: facet((row) => row.target.language).map((language) => ({
+          value: language,
+          label: language,
+          count: chosen.rows.filter((row) => row.target.language === language)
+            .length,
+          color: languageColor(language),
         })),
       },
-      {
-        key: "level",
-        label: "Levels",
-        all: "All levels",
-        options: [
-          { value: "scored", label: "Required + recommended" },
-          { value: "required", label: "Required only" },
-        ],
-      },
-      {
-        key: "language",
-        label: "Language",
-        all: "All languages",
-        options: [
-          ...new Set(chosen.rows.map((row) => row.target.language)),
-        ].sort(),
-      },
+    ],
+    segments: [{ key: "level", label: "Levels", options: LEVEL_CHOICES }],
+    selects: [
       {
         key: "distribution",
         label: "Distribution",
         all: "All distributions",
-        options: [
-          ...new Set(chosen.rows.map((row) => row.target.label)),
-        ].sort(),
+        options: facet((row) => row.target.label),
       },
       {
         key: "library",
         label: "Library",
         all: "All libraries",
-        options: [
-          ...new Set(chosen.rows.map((row) => row.target.instrumented_library)),
-        ].sort(),
+        options: facet((row) => row.target.instrumented_library),
       },
     ],
+    state: restore(params),
     onChange: (state) => {
-      if (state.signal && state.signal !== chosen.key) {
-        location.hash = `#/signals/${encodeURIComponent(state.signal)}`;
-        return "";
-      }
+      remember(state);
       const rows = chosen.rows.filter((row) => {
-        if (state.language && row.target.language !== state.language)
+        if (
+          state.languages.length &&
+          !state.languages.includes(row.target.language)
+        ) {
           return false;
+        }
         if (
           state.library &&
           row.target.instrumented_library !== state.library
@@ -146,14 +205,23 @@ export default function signals(data, key) {
       body.replaceChildren(
         heatmap(chosen, rows, levels, data.report.domains?.[chosen.runner]),
       );
-      return `${rows.length} target${rows.length === 1 ? "" : "s"}`;
+      return rows.length === chosen.rows.length
+        ? `${rows.length} target${rows.length === 1 ? "" : "s"}`
+        : `${rows.length} of ${chosen.rows.length} targets`;
     },
   });
 
+  const declared = chosen.attributes
+    ? Object.keys(chosen.attributes).length
+    : 0;
+
   return el("div", {}, [
-    el("h2", {}, [
-      "Signal parity: ",
-      el("span", { class: "mono", text: chosen.name }),
+    el("div", { class: "controls" }, [
+      el("div", { class: "controls-row" }, [
+        el("h2", { text: "Signal parity" }),
+        picker.node,
+      ]),
+      bar.node,
     ]),
     unknown &&
       el("p", { class: "note" }, [
@@ -163,23 +231,24 @@ export default function signals(data, key) {
         el("span", { class: "mono", text: chosen.name }),
         " instead.",
       ]),
-    el("p", {
-      class: "lede",
-      text:
-        `Rows are the ${
-          chosen.attributes ? Object.keys(chosen.attributes).length : 0
-        } attributes the registry declares on this ${chosen.type}, grouped by ` +
-        "requirement level. Columns are targets that emitted the signal. A filled " +
-        "cell means an attribute was observed at least once with an accepted type; " +
-        "it does not mean every observation conformed. A blank cell means no " +
-        "accepted value was observed. Missing conditional or opt-in attributes " +
-        "are not automatically conformance failures.",
-    }),
-    bar.node,
+    el("details", { class: "lede" }, [
+      el("summary", {}, [
+        `Rows are the ${declared} attributes the registry declares on this ` +
+          `${chosen.type}; columns are the ${chosen.rows.length} targets that ` +
+          "emitted it.",
+      ]),
+      el("p", {
+        text:
+          "Rows are grouped by requirement level. A filled cell means an " +
+          "attribute was observed at least once with an accepted type; it does " +
+          "not mean every observation conformed. A blank cell means no accepted " +
+          "value was observed. Missing conditional or opt-in attributes are not " +
+          "automatically conformance failures.",
+      }),
+    ]),
     body,
   ]);
 }
-
 function heatmap(signal, rows, levels, pin) {
   if (!rows.length) {
     return el("p", { class: "empty", text: "No targets match those filters." });

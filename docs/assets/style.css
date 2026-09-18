@@ -74,6 +74,12 @@
   box-sizing: border-box;
 }
 
+/* A class that sets `display` outranks the UA rule for `hidden`, and several
+   of the controls below are flex rows that start out closed. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -118,9 +124,6 @@ code,
 .masthead {
   border-bottom: 1px solid var(--line);
   background: var(--surface);
-  position: sticky;
-  top: 0;
-  z-index: 5;
 }
 .masthead-row {
   max-width: 1400px;
@@ -182,6 +185,12 @@ h2 {
   max-width: 76ch;
   font-size: 0.9rem;
 }
+.lede summary {
+  cursor: pointer;
+}
+.lede p {
+  margin: 0.5rem 0 0;
+}
 
 .loading,
 .empty {
@@ -191,72 +200,320 @@ h2 {
   font-size: 0.9rem;
 }
 
-.toolbar {
+/* --- controls ------------------------------------------------------------ */
+
+/* The one band that has to stay reachable while a long table scrolls: the
+   masthead gives up `sticky` for it, so this can hold `top: 0` without having
+   to know how tall a wrapped tagline is. Full-bleed across main's padding so
+   nothing shows through beside it. */
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: -1.6rem -1.5rem 1rem;
+  padding: 0.8rem 1.5rem 0.65rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.controls-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  align-items: stretch;
-  margin: 0 0 1rem;
-  padding: 0.7rem;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+.controls-row h2 {
+  margin: 0;
+  flex: none;
+}
+
+/* --- signal picker ------------------------------------------------------- */
+
+.picker-wrap {
+  position: relative;
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.picker {
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 34rem;
+  padding: 0.38rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
 }
-.toolbar-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+.picker:hover {
+  border-color: var(--accent);
 }
-.toolbar input[type="search"],
-.toolbar select {
+.picker-what {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  flex: none;
+}
+.picker-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.picker-key {
+  flex: none;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+.badge {
+  flex: none;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.08rem 0.3rem;
+  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+}
+.palette {
+  position: absolute;
+  z-index: 9;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  width: min(34rem, calc(100vw - 2rem));
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+  overflow: hidden;
+}
+.palette-query {
+  font: inherit;
+  font-size: 0.9rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.palette-list {
+  max-height: min(24rem, 60vh);
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+.palette-group {
+  margin: 0.35rem 0 0.15rem;
+  padding: 0 0.7rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+/* Pointer and keyboard share one highlight, so arrowing down and hovering
+   cannot disagree about which row Enter would take. */
+.palette-option[data-active] {
+  background: var(--accent-soft);
+}
+.palette-option[aria-selected="true"] .palette-name {
+  font-weight: 600;
+}
+.palette-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+.palette-count,
+.pill-count {
+  flex: none;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.palette-none {
+  margin: 0;
+  padding: 1rem 0.7rem;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* --- filters ------------------------------------------------------------- */
+
+.filterbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.search {
   font: inherit;
   font-size: 0.875rem;
+  flex: 1 1 18rem;
+  min-width: 9rem;
   padding: 0.34rem 0.5rem;
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   background: var(--bg);
   color: var(--ink);
 }
-.toolbar input[type="search"] {
-  flex: 1 1 auto;
-  min-width: 9rem;
-}
-.toolbar label {
-  font-size: 0.8rem;
-  color: var(--ink-2);
+.pills,
+.segments {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.segments {
+  gap: 0;
+}
+.pill,
+.segment,
+.more,
+.chip {
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
+  gap: 0.3rem;
+  padding: 0.24rem 0.5rem;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
 }
-/* One column for the names, so the selects line up down the left edge. Wide
-   enough for the longest of them, so none of them wraps. */
-.toolbar label > span {
-  flex: 0 0 5.5rem;
+.pill:hover,
+.segment:hover,
+.more:hover,
+.chip:hover {
+  color: var(--ink);
+  border-color: var(--accent);
 }
-.toolbar label select {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 26rem;
+/* A language keeps its colour from the heatmap's bands, so the pill that
+   filters it and the band it filters to are the same thing. */
+.pill[aria-pressed="true"] {
+  color: var(--pill, var(--accent));
+  border-color: var(--pill, var(--accent));
+  background: color-mix(
+    in srgb,
+    var(--pill, var(--accent)) 12%,
+    var(--surface)
+  );
+  font-weight: 600;
+}
+.segment {
+  border-radius: 0;
+  border-left-width: 0;
+}
+.segment:first-child {
+  border-left-width: 1px;
+  border-radius: 999px 0 0 999px;
+}
+.segment:last-child {
+  border-radius: 0 999px 999px 0;
+}
+.segment[aria-checked="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+/* A left border erased by the neighbour's `border-left-width: 0` has to come
+   back when that neighbour is the selected one. */
+.segment[aria-checked="true"] + .segment {
+  border-left-width: 1px;
+  border-left-color: var(--accent);
 }
 .count {
   color: var(--ink-3);
   font-size: 0.8rem;
   margin-left: auto;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.scroller {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+.more[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
 }
-/* A grid of fixed-width cells has a natural width, and stretching it to the
-   page pours the slack into the label column — which pushes the matrix right,
-   away from the row it belongs to. Let it be as wide as it is. */
-.scroller.fit {
-  width: max-content;
-  max-width: 100%;
+.more-drawer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.2rem;
+  margin-top: 0.5rem;
+}
+.more-row {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.more-row select {
+  font: inherit;
+  font-size: 0.8rem;
+  max-width: 16rem;
+  padding: 0.22rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* Only shown when something is on: a row that is always there is a row nobody
+   reads, and what is filtered has to be readable at a glance. */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.chips-what {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+}
+.chip {
+  color: var(--pill, var(--accent));
+  border-color: var(--pill, var(--accent));
+  background: color-mix(
+    in srgb,
+    var(--pill, var(--accent)) 10%,
+    var(--surface)
+  );
+}
+.chip-clear {
+  color: var(--ink-3);
+  border-color: var(--line-strong);
+  background: none;
+  margin-left: 0.25rem;
 }
 
 table {
@@ -491,5 +748,20 @@ td.num {
   }
   .tagline {
     margin-left: 0;
+  }
+  .controls {
+    margin: -1.2rem -1rem 1rem;
+    padding: 0.7rem 1rem 0.6rem;
+  }
+  .picker-key {
+    display: none;
+  }
+  .count {
+    margin-left: 0;
+  }
+  /* Wrapped onto six rows this is most of a phone screen, which is no longer
+     worth keeping on top of the table. */
+  .controls {
+    position: static;
   }
 }

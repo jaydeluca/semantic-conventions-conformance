@@ -4,6 +4,7 @@
 // Hash routes support direct links on GitHub Pages without server rewrites.
 
 import { load } from "./data.js";
+import { current } from "./route.js";
 import { el } from "./ui.js";
 
 import * as signals from "./views/signals.js";
@@ -20,29 +21,20 @@ document.querySelector(".skip").addEventListener("click", (event) => {
   main.focus();
 });
 
-// A malformed escape in a link should not prevent the report from loading.
-function decode(hash) {
-  try {
-    return decodeURIComponent(hash);
-  } catch {
-    return "";
-  }
-}
-
-function resolve(hash) {
-  const path = decode(hash.replace(/^#/, "")) || "/";
+function resolve() {
+  const { path, params } = current();
   for (const route of ROUTES) {
     const found = path.match(route.match);
-    if (found) return { route, argument: found[1] ?? null };
+    if (found) return { route, argument: found[1] ?? null, params };
   }
-  return { route: ROUTES[0], argument: null };
+  return { route: ROUTES[0], argument: null, params };
 }
 
 function render(data) {
-  const { route, argument } = resolve(location.hash);
+  const { route, argument, params } = resolve();
   let title = `${route.name} · conformance`;
   try {
-    main.replaceChildren(route.view.default(data, argument));
+    main.replaceChildren(route.view.default(data, argument, params));
     title = route.view.title?.(data, argument) ?? title;
   } catch (error) {
     console.error(error);
@@ -69,7 +61,12 @@ load()
   .then((data) => {
     provenance(data);
     render(data);
+    let path = current().raw;
     addEventListener("hashchange", () => {
+      // Filters write themselves into the query, which fires no hashchange;
+      // guarding on the path anyway keeps a stray one from wiping the view.
+      if (current().raw === path) return;
+      path = current().raw;
       render(data);
       scrollTo({ top: 0 });
     });
