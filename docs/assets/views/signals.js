@@ -89,6 +89,14 @@ export default function signals(data, key) {
         ].sort(),
       },
       {
+        key: "distribution",
+        label: "Distribution",
+        all: "All distributions",
+        options: [
+          ...new Set(chosen.rows.map((row) => row.target.label)),
+        ].sort(),
+      },
+      {
         key: "library",
         label: "Library",
         all: "All libraries",
@@ -109,6 +117,9 @@ export default function signals(data, key) {
           state.library &&
           row.target.instrumented_library !== state.library
         ) {
+          return false;
+        }
+        if (state.distribution && row.target.label !== state.distribution) {
           return false;
         }
         if (state.q) {
@@ -224,12 +235,10 @@ function heatmap(signal, rows, levels, pin) {
     });
   }
 
-  const bands = languageBands(columns);
   return el("div", {}, [
-    caption(columns),
     el("div", { class: "scroller fit" }, [
-      el("table", { class: `heatmap${bands ? " banded" : ""}` }, [
-        el("thead", {}, [bands, header]),
+      el("table", { class: "heatmap" }, [
+        el("thead", {}, [languageBands(columns), header]),
         ...groups,
       ]),
     ]),
@@ -290,8 +299,9 @@ function columnHeader(target, label) {
 }
 
 /**
- * A band naming each language over the columns it covers, or null when they are
- * all one language, which the caption already says.
+ * A band naming each language over the columns it covers. Column headers carry
+ * the library, not the language, so this row is the only thing on the page that
+ * names one; it stays even when a single band spans every column.
  */
 function languageBands(columns) {
   const groups = [];
@@ -300,7 +310,6 @@ function languageBands(columns) {
     if (last && last.language === row.target.language) last.span += 1;
     else groups.push({ language: row.target.language, span: 1 });
   }
-  if (groups.length < 2) return null;
   return el("tr", { class: "band" }, [
     el("th", { class: "attr", scope: "col" }),
     ...groups.map((group) => {
@@ -318,42 +327,6 @@ function languageBands(columns) {
     }),
     el("th", { class: "tally", scope: "col" }),
   ]);
-}
-
-/**
- * Return a caption containing only fields shared by all columns.
- */
-function caption(columns) {
-  const shared = (pick) => {
-    const values = new Set(columns.map((row) => pick(row.target)));
-    return values.size === 1 ? [...values][0] : null;
-  };
-  const language = shared((t) => t.language);
-  const side = shared((t) => t.side);
-  const instrumentation = shared((t) => t.instrumentation_library);
-
-  // The language carries its own colour here, as the bands and column
-  // underlines do, so it is not lost in a run of plain text.
-  const parts = [
-    [`${columns.length} column${columns.length === 1 ? "" : "s"}`],
-  ];
-  if (language) {
-    parts.push([
-      "every one ",
-      el("b", {
-        class: "lang",
-        text: language,
-        style: `color:${languageColor(language)}`,
-      }),
-    ]);
-  }
-  if (side) parts.push([`every one ${side}-side`]);
-  if (instrumentation) parts.push([`all through ${instrumentation}`]);
-  return el(
-    "p",
-    { class: "caption" },
-    parts.flatMap((part, i) => (i ? [" · ", ...part] : part)),
-  );
 }
 
 /**

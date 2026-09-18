@@ -85,7 +85,61 @@ test("filters columns and requirement levels without losing registry rows", asyn
   assert.match(main.textContent, /No targets match/);
 });
 
-test("attribute rows link to the registry, and the caption colours the language", async (t) => {
+test("the distribution filter excludes what a substring search cannot", async (t) => {
+  // `opentelemetry-java` matches the javaagent by its label and the java-http
+  // -server library by its coordinate; the filter separates the two.
+  const java = (name, label, coordinate) =>
+    target({
+      id: `http/java/${name}/${label}`,
+      instrumented_library: name,
+      instrumentation_library: coordinate,
+      label,
+      side: "server",
+      backend: null,
+      signals: [
+        { type: "metric", name: "db.duration", emitted: ["db.system"] },
+      ],
+    });
+  const document = report([
+    java(
+      "servlet",
+      "opentelemetry-javaagent",
+      "io.opentelemetry.javaagent:opentelemetry-javaagent",
+    ),
+    java(
+      "java-http-server",
+      "opentelemetry-javaagent",
+      "io.opentelemetry.javaagent:opentelemetry-javaagent",
+    ),
+    java(
+      "java-http-server",
+      "opentelemetry-library",
+      "io.opentelemetry.instrumentation:opentelemetry-java-http-server",
+    ),
+  ]);
+  const window = await setup(t, document);
+  const main = window.document.querySelector("main");
+  main.replaceChildren(signals(await load(), null));
+  const input = main.querySelector("input");
+  const select = main.querySelector('select[aria-label="Distribution"]');
+
+  assert.deepEqual(
+    [...select.options].map((option) => option.value),
+    ["", "opentelemetry-javaagent", "opentelemetry-library"],
+  );
+
+  // The search alone drags in the library column.
+  input.value = "opentelemetry-java";
+  input.dispatchEvent(new window.Event("input"));
+  assert.equal(main.querySelectorAll("th.col").length, 3);
+
+  select.value = "opentelemetry-javaagent";
+  select.dispatchEvent(new window.Event("change"));
+  assert.equal(main.querySelectorAll("th.col").length, 2);
+  assert.match(main.querySelector(".count").textContent, /^2 targets$/);
+});
+
+test("attribute rows link to the registry, and the band colours the language", async (t) => {
   const window = await setup(t);
   const main = window.document.querySelector("main");
   main.replaceChildren(signals(await load(), null));
@@ -101,10 +155,14 @@ test("attribute rows link to the registry, and the caption colours the language"
   );
   assert.equal(links[0].getAttribute("rel"), "noreferrer");
 
-  const language = main.querySelector(".caption .lang");
-  assert.equal(language.textContent, "java");
-  assert.match(language.getAttribute("style"), /--lang-\d/);
-  assert.match(main.querySelector(".caption").textContent, /1 column · every/);
+  // One language still gets a band: nothing else on the page names it.
+  const bands = [...main.querySelectorAll("tr.band th.band-cell")];
+  assert.deepEqual(
+    bands.map((band) => band.textContent),
+    ["java"],
+  );
+  assert.equal(bands[0].getAttribute("colspan"), "1");
+  assert.match(bands[0].getAttribute("style"), /--lang-\d/);
 });
 
 test("empty reports and unknown signals give useful messages", async (t) => {
