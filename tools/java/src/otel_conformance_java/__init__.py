@@ -26,11 +26,13 @@ Two subcommands, matching the two phases a package has:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
-from typing import Sequence
+from typing import NoReturn, Sequence, cast
 
 # The file that marks the root of a language's build. Searched for upwards
 # from the scenario directory, so a scenario says nothing about how deep it is
@@ -41,6 +43,7 @@ BUILD_MARKER = "settings.gradle.kts"
 # the root rather than under each project, so where a Gradle project sits on
 # disk is the build's business rather than something restated here.
 RUNTIME = Path("build") / "scenario-runtime"
+ARTIFACTS_FILE = "artifacts.json"
 
 AGENT_JAR = "opentelemetry-javaagent.jar"
 AGENT_CONTROL_JAR = "otel-conformance-agent-control.jar"
@@ -49,6 +52,10 @@ SCENARIO_LAUNCHER = "io.opentelemetry.conformance.scenario.ScenarioLauncher"
 
 class LayoutError(RuntimeError):
     """The Java build could not be found from where this was run."""
+
+
+class ArtifactMetadataError(RuntimeError):
+    """The prepared artifact metadata is absent or violates its contract."""
 
 
 def build_root(start: Path | None = None) -> Path:
@@ -80,6 +87,109 @@ def gradle_command(root: Path, task: str) -> list[str]:
         str(root),
         task,
     ]
+
+
+def prepare_runtime(root: Path, project: str, destination: Path) -> int:
+    """Build ``project`` and atomically publish its artifact metadata."""
+    normalized_project = project.strip(":")
+    command = gradle_command(root, f":{normalized_project}:prepareRuntime")
+    result = subprocess.call(command)  # noqa: S603
+    if result != 0:
+        return result
+
+    runtime_name = normalized_project.replace(":", "-")
+    source = root / RUNTIME / runtime_name / ARTIFACTS_FILE
+    target = destination / ARTIFACTS_FILE
+    try:
+        contents = source.read_bytes()
+    except FileNotFoundError as error:
+        # Unmigrated Java targets have neither a generated nor a committed
+        # manifest during the pilot. Once a target has committed the file,
+        # its generated counterpart is required and may never be guessed.
+        if not target.exists():
+            return 0
+        raise ArtifactMetadataError(
+            f"prepared artifact metadata is missing: {source}"
+        ) from error
+    _validate_artifacts(contents, source)
+
+    if target.is_file() and target.read_bytes() == contents:
+        return 0
+
+    temporary: Path | None = None
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=destination, prefix=f".{ARTIFACTS_FILE}.", suffix=".tmp"
+        )
+        temporary = Path(temporary_name)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(contents)
+        temporary.chmod(0o644)
+        temporary.replace(target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return 0
+
+
+def _validate_artifacts(contents: bytes, source: Path) -> None:
+    try:
+        decoded = cast(object, json.loads(contents))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ArtifactMetadataError(
+            f"invalid artifact metadata in {source}: malformed JSON"
+        ) from error
+
+    if not isinstance(decoded, dict):
+        _invalid(source, "top-level value must be an object")
+    document = cast(dict[str, object], decoded)
+    if document.get("schema_version") != 1:
+        _invalid(source, "schema_version must be 1")
+    if document.get("generated_by") != "otel-conformance-java prepare":
+        _invalid(source, "generated_by is invalid")
+    decoded_artifacts = document.get("artifacts")
+    if not isinstance(decoded_artifacts, list):
+        _invalid(source, "artifacts must be a list")
+    artifacts = cast(list[object], decoded_artifacts)
+    if not artifacts:
+        _invalid(source, "artifacts must not be empty")
+
+    sort_keys: list[tuple[str, str, str]] = []
+    unique_keys: set[tuple[str, str]] = set()
+    for index, decoded_artifact in enumerate(artifacts):
+        if not isinstance(decoded_artifact, dict):
+            _invalid(source, f"artifacts[{index}] must be an object")
+        artifact = cast(dict[str, object], decoded_artifact)
+        role = artifact.get("role")
+        if role not in {"instrumented_library", "instrumentation_library"}:
+            _invalid(source, f"artifacts[{index}].role is invalid")
+        if artifact.get("ecosystem") != "maven":
+            _invalid(source, f"artifacts[{index}].ecosystem must be maven")
+        coordinate = artifact.get("coordinate")
+        version = artifact.get("version")
+        if not isinstance(coordinate, str) or not coordinate.strip():
+            _invalid(
+                source, f"artifacts[{index}].coordinate must not be empty"
+            )
+        if not isinstance(version, str) or not version.strip():
+            _invalid(source, f"artifacts[{index}].version must not be empty")
+        assert isinstance(role, str)
+        key = (role, coordinate)
+        if key in unique_keys:
+            _invalid(source, f"duplicate artifact {role} {coordinate}")
+        unique_keys.add(key)
+        sort_keys.append((role, coordinate, version))
+
+    if sort_keys != sorted(sort_keys):
+        _invalid(
+            source, "artifacts are not sorted by role, coordinate, version"
+        )
+
+
+def _invalid(source: Path, reason: str) -> NoReturn:
+    raise ArtifactMetadataError(
+        f"invalid artifact metadata in {source}: {reason}"
+    )
 
 
 def java_command(
@@ -160,8 +270,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     root = build_root()
 
     if arguments.command == "prepare":
-        project = arguments.project.strip(":")
-        command = gradle_command(root, f":{project}:prepareRuntime")
+        return prepare_runtime(root, arguments.project, Path.cwd())
     else:
         command = java_command(
             root,
