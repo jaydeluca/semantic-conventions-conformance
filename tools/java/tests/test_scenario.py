@@ -172,28 +172,78 @@ class TestPreparing:
         assert prepare_runtime(root, PROJECT, target) == 0
         assert not (target / ARTIFACTS_FILE).exists()
 
-    def test_malformed_prepared_artifacts_does_not_overwrite_committed_file(
+    @pytest.mark.parametrize("contents", ["{", "{}", "null", "[]"])
+    def test_invalid_prepared_artifacts_does_not_overwrite_committed_file(
         self,
         root: Path,
         tmp_path: Path,
         prepared_artifacts: bytes,
         monkeypatch: pytest.MonkeyPatch,
+        contents: str,
     ) -> None:
         del prepared_artifacts
         monkeypatch.setattr(
             otel_conformance_java.subprocess, "call", lambda _: 0
         )
         runtime = root / "build" / "scenario-runtime" / RUNTIME
-        (runtime / ARTIFACTS_FILE).write_text("{", encoding="utf-8")
+        (runtime / ARTIFACTS_FILE).write_text(contents, encoding="utf-8")
         target = tmp_path / "target"
         target.mkdir()
         committed = target / ARTIFACTS_FILE
         committed.write_bytes(b"committed\n")
 
-        with pytest.raises(ArtifactMetadataError, match="malformed JSON"):
+        with pytest.raises(ArtifactMetadataError, match="invalid artifact metadata"):
             prepare_runtime(root, PROJECT, target)
 
         assert committed.read_bytes() == b"committed\n"
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("schema_version", 2),
+            ("schema_version", True),
+            ("generated_by", None),
+            ("artifacts", []),
+            ("artifacts", {}),
+            ("artifacts", [None]),
+            ("role", None),
+            ("role", []),
+            ("ecosystem", "npm"),
+            ("coordinate", ""),
+            ("version", None),
+            ("version", " "),
+            ("version", 1),
+        ],
+    )
+    def test_invalid_fields_do_not_overwrite_committed_artifacts(
+        self,
+        root: Path,
+        tmp_path: Path,
+        prepared_artifacts: bytes,
+        monkeypatch: pytest.MonkeyPatch,
+        field: str,
+        value: object,
+    ) -> None:
+        monkeypatch.setattr(
+            otel_conformance_java.subprocess, "call", lambda _: 0
+        )
+        metadata = json.loads(prepared_artifacts)
+        entry = metadata if field in metadata else metadata["artifacts"][0]
+        if value is None:
+            del entry[field]
+        else:
+            entry[field] = value
+        runtime = root / "build" / "scenario-runtime" / RUNTIME
+        (runtime / ARTIFACTS_FILE).write_text(json.dumps(metadata))
+        target = tmp_path / "target"
+        target.mkdir()
+        committed = target / ARTIFACTS_FILE
+        committed.write_bytes(prepared_artifacts)
+
+        with pytest.raises(ArtifactMetadataError, match="invalid artifact metadata"):
+            prepare_runtime(root, PROJECT, target)
+
+        assert committed.read_bytes() == prepared_artifacts
 
     def test_unchanged_artifacts_are_not_replaced(
         self,

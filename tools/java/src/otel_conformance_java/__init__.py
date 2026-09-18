@@ -32,7 +32,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 # The file that marks the root of a language's build. Searched for upwards
 # from the scenario directory, so a scenario says nothing about how deep it is
@@ -112,11 +112,15 @@ def prepare_runtime(root: Path, project: str, destination: Path) -> int:
             f"prepared artifact metadata is missing: {source}"
         ) from error
     try:
-        json.loads(contents)
+        metadata = cast(object, json.loads(contents))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ArtifactMetadataError(
             f"invalid artifact metadata in {source}: malformed JSON"
         ) from error
+    if not _valid_artifact_metadata(metadata):
+        raise ArtifactMetadataError(
+            f"invalid artifact metadata in {source}: invalid schema or artifact fields"
+        )
 
     if target.is_file() and target.read_bytes() == contents:
         return 0
@@ -135,6 +139,34 @@ def prepare_runtime(root: Path, project: str, destination: Path) -> int:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
     return 0
+
+
+def _valid_artifact_metadata(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    document = cast(dict[str, object], value)
+    if (
+        type(document.get("schema_version")) is not int
+        or document.get("schema_version") != 1
+        or document.get("generated_by") != "otel-conformance-java prepare"
+    ):
+        return False
+    artifacts = document.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        return False
+    for value in cast(list[object], artifacts):
+        if not isinstance(value, dict):
+            return False
+        artifact = cast(dict[str, object], value)
+        if artifact.get("role") not in (
+            "instrumented_library", "instrumentation_library"
+        ) or artifact.get("ecosystem") != "maven":
+            return False
+        for field in ("coordinate", "version"):
+            text = artifact.get(field)
+            if not isinstance(text, str) or not text.strip():
+                return False
+    return True
 
 
 def java_command(
