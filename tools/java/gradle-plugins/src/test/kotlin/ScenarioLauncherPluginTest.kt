@@ -38,11 +38,26 @@ class ScenarioLauncherPluginTest {
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":prepareRuntime")?.outcome)
         assertEquals(
-            expectedJson(
-                "instrumentation_library" to
-                    "io.opentelemetry.instrumentation:opentelemetry-armeria-1.3@2.31.1-alpha",
-                "instrumented_library" to "com.linecorp.armeria:armeria@1.41.1",
-            ),
+            """
+            {
+              "schema_version": 1,
+              "generated_by": "otel-conformance-java prepare",
+              "artifacts": [
+                {
+                  "role": "instrumentation_library",
+                  "ecosystem": "maven",
+                  "coordinate": "io.opentelemetry.instrumentation:opentelemetry-armeria-1.3",
+                  "version": "2.31.1-alpha"
+                },
+                {
+                  "role": "instrumented_library",
+                  "ecosystem": "maven",
+                  "coordinate": "com.linecorp.armeria:armeria",
+                  "version": "1.41.1"
+                }
+              ]
+            }
+            """.trimIndent() + "\n",
             artifactsFile().readText(),
         )
         assertEquals(
@@ -173,25 +188,4 @@ class ScenarioLauncherPluginTest {
             .withPluginClasspath()
             .withArguments(*arguments, "--stacktrace")
             .buildAndFail()
-
-    private fun expectedJson(vararg artifacts: Pair<String, String>): String =
-        buildString {
-            append("{\n")
-            append("  \"schema_version\": 1,\n")
-            append("  \"generated_by\": \"otel-conformance-java prepare\",\n")
-            append("  \"artifacts\": [\n")
-            artifacts.forEachIndexed { index, (role, coordinateAndVersion) ->
-                val (coordinate, version) = coordinateAndVersion.split('@')
-                append("    {\n")
-                append("      \"role\": \"$role\",\n")
-                append("      \"ecosystem\": \"maven\",\n")
-                append("      \"coordinate\": \"$coordinate\",\n")
-                append("      \"version\": \"$version\"\n")
-                append("    }")
-                if (index != artifacts.lastIndex) append(',')
-                append('\n')
-            }
-            append("  ]\n")
-            append("}\n")
-        }
 }

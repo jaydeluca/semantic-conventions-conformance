@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import java.nio.charset.StandardCharsets
+import groovy.json.JsonOutput
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -145,58 +145,28 @@ abstract class WriteConformanceArtifacts : DefaultTask() {
     fun write() {
         val resolved = artifacts.get().map(ResolvedConformanceArtifact::decode)
         if (resolved.isEmpty()) {
-            // During the pilot, projects without declarations remain
-            // unmigrated and must not publish an empty manifest.
+            // Skip metadata for projects without artifact declarations.
             outputFile.get().asFile.delete()
             return
         }
-        val json = buildString {
-            append("{\n")
-            append("  \"schema_version\": 1,\n")
-            append("  \"generated_by\": \"otel-conformance-java prepare\",\n")
-            append("  \"artifacts\": [\n")
-            resolved.forEachIndexed { index, artifact ->
-                append("    {\n")
-                append("      \"role\": \"").append(jsonEscape(artifact.role)).append("\",\n")
-                append("      \"ecosystem\": \"maven\",\n")
-                append("      \"coordinate\": \"")
-                    .append(jsonEscape(artifact.coordinate))
-                    .append("\",\n")
-                append("      \"version\": \"")
-                    .append(jsonEscape(artifact.version))
-                    .append("\"\n")
-                append("    }")
-                if (index != resolved.lastIndex) append(',')
-                append('\n')
-            }
-            append("  ]\n")
-            append("}\n")
-        }
-
-        val destination = outputFile.get().asFile.toPath()
-        destination.parent.toFile().mkdirs()
-        destination.toFile().writeText(json, StandardCharsets.UTF_8)
+        val document =
+            mapOf(
+                "schema_version" to 1,
+                "generated_by" to "otel-conformance-java prepare",
+                "artifacts" to resolved.map { artifact ->
+                    mapOf(
+                        "role" to artifact.role,
+                        "ecosystem" to "maven",
+                        "coordinate" to artifact.coordinate,
+                        "version" to artifact.version,
+                    )
+                },
+            )
+        val json =
+            JsonOutput.prettyPrint(JsonOutput.toJson(document))
+                .replace(Regex("(?m)^ +")) { " ".repeat(it.value.length / 2) }
+        val destination = outputFile.get().asFile
+        destination.parentFile.mkdirs()
+        destination.writeText("$json\n")
     }
 }
-
-private fun jsonEscape(value: String): String =
-    buildString {
-        value.forEach { character ->
-            when (character) {
-                '\\' -> append("\\\\")
-                '"' -> append("\\\"")
-                '\b' -> append("\\b")
-                '\u000C' -> append("\\f")
-                '\n' -> append("\\n")
-                '\r' -> append("\\r")
-                '\t' -> append("\\t")
-                else -> {
-                    if (character.code < 0x20) {
-                        append("\\u%04x".format(character.code))
-                    } else {
-                        append(character)
-                    }
-                }
-            }
-        }
-    }

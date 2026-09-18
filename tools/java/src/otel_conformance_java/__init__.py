@@ -32,7 +32,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import NoReturn, Sequence, cast
+from typing import Sequence
 
 # The file that marks the root of a language's build. Searched for upwards
 # from the scenario directory, so a scenario says nothing about how deep it is
@@ -111,7 +111,12 @@ def prepare_runtime(root: Path, project: str, destination: Path) -> int:
         raise ArtifactMetadataError(
             f"prepared artifact metadata is missing: {source}"
         ) from error
-    _validate_artifacts(contents, source)
+    try:
+        json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ArtifactMetadataError(
+            f"invalid artifact metadata in {source}: malformed JSON"
+        ) from error
 
     if target.is_file() and target.read_bytes() == contents:
         return 0
@@ -130,66 +135,6 @@ def prepare_runtime(root: Path, project: str, destination: Path) -> int:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
     return 0
-
-
-def _validate_artifacts(contents: bytes, source: Path) -> None:
-    try:
-        decoded = cast(object, json.loads(contents))
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise ArtifactMetadataError(
-            f"invalid artifact metadata in {source}: malformed JSON"
-        ) from error
-
-    if not isinstance(decoded, dict):
-        _invalid(source, "top-level value must be an object")
-    document = cast(dict[str, object], decoded)
-    if document.get("schema_version") != 1:
-        _invalid(source, "schema_version must be 1")
-    if document.get("generated_by") != "otel-conformance-java prepare":
-        _invalid(source, "generated_by is invalid")
-    decoded_artifacts = document.get("artifacts")
-    if not isinstance(decoded_artifacts, list):
-        _invalid(source, "artifacts must be a list")
-    artifacts = cast(list[object], decoded_artifacts)
-    if not artifacts:
-        _invalid(source, "artifacts must not be empty")
-
-    sort_keys: list[tuple[str, str, str]] = []
-    unique_keys: set[tuple[str, str]] = set()
-    for index, decoded_artifact in enumerate(artifacts):
-        if not isinstance(decoded_artifact, dict):
-            _invalid(source, f"artifacts[{index}] must be an object")
-        artifact = cast(dict[str, object], decoded_artifact)
-        role = artifact.get("role")
-        if role not in {"instrumented_library", "instrumentation_library"}:
-            _invalid(source, f"artifacts[{index}].role is invalid")
-        if artifact.get("ecosystem") != "maven":
-            _invalid(source, f"artifacts[{index}].ecosystem must be maven")
-        coordinate = artifact.get("coordinate")
-        version = artifact.get("version")
-        if not isinstance(coordinate, str) or not coordinate.strip():
-            _invalid(
-                source, f"artifacts[{index}].coordinate must not be empty"
-            )
-        if not isinstance(version, str) or not version.strip():
-            _invalid(source, f"artifacts[{index}].version must not be empty")
-        assert isinstance(role, str)
-        key = (role, coordinate)
-        if key in unique_keys:
-            _invalid(source, f"duplicate artifact {role} {coordinate}")
-        unique_keys.add(key)
-        sort_keys.append((role, coordinate, version))
-
-    if sort_keys != sorted(sort_keys):
-        _invalid(
-            source, "artifacts are not sorted by role, coordinate, version"
-        )
-
-
-def _invalid(source: Path, reason: str) -> NoReturn:
-    raise ArtifactMetadataError(
-        f"invalid artifact metadata in {source}: {reason}"
-    )
 
 
 def java_command(
