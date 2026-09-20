@@ -300,6 +300,13 @@ test("app loads a deep link, skips to content, and follows signal changes", asyn
   const main = window.document.querySelector("main");
   const ui = driver(window, main);
   assert.match(ui.picker().textContent, /db\.duration/);
+  // The heading says what is being chosen, so the button only shows the
+  // choice; what it dropped has to stay in the accessible name.
+  assert.doesNotMatch(ui.picker().textContent, /signal/i);
+  assert.equal(
+    ui.picker().getAttribute("aria-label"),
+    "Signal: metric db.duration",
+  );
   assert.match(
     window.document.querySelector("#provenance").textContent,
     /1 targets/,

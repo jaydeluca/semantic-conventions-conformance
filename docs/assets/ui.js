@@ -47,6 +47,29 @@ export function levelLegend(levels = LEVELS) {
   );
 }
 
+let bandSize;
+
+/**
+ * Publish a sticky band's height as `--controls-h`, so the table pane under it
+ * can leave exactly that much room however the filters wrap. Browsers without
+ * `ResizeObserver` fall back to the value in the stylesheet.
+ *
+ * @param {HTMLElement} band the sticky element to measure
+ */
+export function trackBand(band) {
+  if (typeof ResizeObserver !== "function") return;
+  // One observer for the page: a re-render replaces the band, and an observer
+  // still holding the old one would keep it alive.
+  bandSize?.disconnect();
+  bandSize = new ResizeObserver(() =>
+    document.documentElement.style.setProperty(
+      "--controls-h",
+      `${band.offsetHeight}px`,
+    ),
+  );
+  bandSize.observe(band);
+}
+
 /** Distinct ids, so a label and the thing it names can find each other. */
 let sequence = 0;
 const uid = (prefix) => `${prefix}-${(sequence += 1)}`;
@@ -57,9 +80,7 @@ const APPLE = () => {
 };
 
 /**
- * One item of a {@link palette}.
- *
- * @typedef {object} PaletteItem
+ * @typedef {object} PaletteItem one entry in a {@link palette}
  * @property {string} value what {@link palette}'s `onPick` is called with
  * @property {string} name the item's own label
  * @property {string} group the heading it sits under; items are shown in the
@@ -69,14 +90,17 @@ const APPLE = () => {
  */
 
 /**
- * A searchable list of routes behind one button.
+ * A searchable list of signals behind one button: the button shows the current
+ * choice, a click or `⌘K` opens the panel, typing narrows it, and arrows and
+ * Enter pick. Picking calls `onPick`, which is how the view routes to the
+ * signal that was chosen.
  *
- * Navigation, unlike a filter, changes what the page is about, so it reads as
- * one prominent control rather than as another select — and a select cannot
- * be searched, which matters once there are more entries than fit on screen.
+ * A native select would be the shorter way to do this, but it cannot be
+ * searched, and there are more signals in the report than fit on screen.
  *
  * @param {object} options
- * @param {string} options.label what is being chosen, e.g. `Signal`
+ * @param {string} options.label what is being chosen, e.g. `Signal`; it names
+ *   the button and the panel for assistive technology rather than being shown
  * @param {PaletteItem[]} options.items every choice, grouped and in order
  * @param {string} options.value the current choice's `value`
  * @param {(value: string) => void} options.onPick called with a new choice;
@@ -88,6 +112,8 @@ export function palette({ label, items, value, onPick }) {
   const chosen = items.find((item) => item.value === value);
   const lower = label.toLowerCase();
 
+  // The button shows the choice, not the word for it: the heading beside it
+  // already says what is being chosen, so only the accessible name repeats it.
   const button = el(
     "button",
     {
@@ -95,10 +121,12 @@ export function palette({ label, items, value, onPick }) {
       class: "picker",
       "aria-haspopup": "listbox",
       "aria-expanded": "false",
+      "aria-label": chosen
+        ? `${label}: ${[chosen.badge, chosen.name].filter(Boolean).join(" ")}`
+        : `Choose a ${lower}`,
       onclick: () => open(panel.hidden),
     },
     [
-      el("span", { class: "picker-what", text: label }),
       chosen?.badge && el("span", { class: "badge", text: chosen.badge }),
       el("span", {
         class: "picker-name mono",

@@ -126,8 +126,6 @@ code,
   background: var(--surface);
 }
 .masthead-row {
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 1.1rem 1.5rem 0.55rem;
 }
 .masthead h1 {
@@ -154,15 +152,11 @@ code,
 }
 
 main {
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 1.6rem 1.5rem 4rem;
 }
 
 footer {
   border-top: 1px solid var(--line);
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 1.2rem 1.5rem 2.5rem;
   color: var(--ink-3);
   font-size: 0.8rem;
@@ -182,7 +176,6 @@ h2 {
 .lede {
   color: var(--ink-2);
   margin: 0 0 1.2rem;
-  max-width: 76ch;
   font-size: 0.9rem;
 }
 .lede summary {
@@ -190,6 +183,7 @@ h2 {
 }
 .lede p {
   margin: 0.5rem 0 0;
+  max-width: 86ch;
 }
 
 .loading,
@@ -204,8 +198,10 @@ h2 {
 
 /* The one band that has to stay reachable while a long table scrolls: the
    masthead gives up `sticky` for it, so this can hold `top: 0` without having
-   to know how tall a wrapped tagline is. Full-bleed across main's padding so
-   nothing shows through beside it. */
+   to know how tall a wrapped tagline is. Full-bleed across main's padding, and
+   main runs the width of the screen, so nothing shows beside it. Its height
+   reaches the table pane as `--controls-h` (`trackBand` in `ui.js`), because
+   the filter chips and the extra filters both change it. */
 .controls {
   position: sticky;
   top: 0;
@@ -251,13 +247,6 @@ h2 {
 }
 .picker:hover {
   border-color: var(--accent);
-}
-.picker-what {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  flex: none;
 }
 .picker-name {
   flex: 1 1 auto;
@@ -577,6 +566,17 @@ td.num {
 
 /* --- heatmap ------------------------------------------------------------- */
 
+/* The heatmap is wider than the screen and longer than it, so it scrolls in
+   its own pane rather than dragging the page sideways: one scrollbar per axis,
+   and the header row parks under the controls band instead of behind it. The
+   fallback is a band with one row of filters; `trackBand` replaces it with the
+   measured height as soon as the page has one. */
+.scroller {
+  overflow: auto;
+  max-height: max(22rem, calc(100vh - var(--controls-h, 7rem) - 9rem));
+  overscroll-behavior-x: contain;
+}
+
 .heatmap {
   width: auto;
   font-size: 0.8rem;
@@ -705,8 +705,11 @@ td.num {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink-2);
+}
+.heatmap tr.level-head span {
   position: sticky;
   left: 0;
+  display: inline-block;
 }
 .heatmap tr.level-head i {
   display: inline-block;
@@ -721,6 +724,7 @@ td.num {
 }
 
 .note {
+  max-width: 86ch;
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
   padding: 0.7rem 0.9rem;
@@ -763,5 +767,9 @@ td.num {
      worth keeping on top of the table. */
   .controls {
     position: static;
+  }
+  /* And with the band scrolled away, the pane can have the whole screen. */
+  .scroller {
+    max-height: max(22rem, calc(100vh - 4rem));
   }
 }

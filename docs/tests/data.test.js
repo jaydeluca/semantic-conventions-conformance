@@ -173,6 +173,30 @@ test("competing instrumentations and HTTP sides remain distinguishable", () => {
   assert.equal(distinguish([targets[0]]).get(targets[0].id).secondary, null);
 });
 
+test("one library shared by two languages needs no distribution", () => {
+  const targets = [
+    target({
+      id: "http/go/net-http/otelhttp",
+      language: "go",
+      backend: null,
+      instrumented_library: "net/http",
+      label: "otelhttp",
+    }),
+    target({
+      id: "http/ruby/net-http/instrumentation",
+      language: "ruby",
+      backend: null,
+      instrumented_library: "net/http",
+      label: "opentelemetry-instrumentation-net_http",
+    }),
+  ];
+  const labels = [...distinguish(targets).values()];
+  assert.deepEqual(
+    labels.map((label) => label.secondary),
+    [null, null],
+  );
+});
+
 test("every committed signal has distinct column labels within each language", async (t) => {
   const document = JSON.parse(
     await readFile(

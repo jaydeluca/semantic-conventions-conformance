@@ -225,9 +225,14 @@ function sameAttributes(left, right) {
  *   keyed by `target.id`
  */
 export function distinguish(targets) {
+  // Columns are banded by language, so a library only has to be told apart
+  // from the others in its own band: `net/http` is instrumented in both Go
+  // and Ruby, and naming the distribution in either is noise.
+  const group = (target) =>
+    `${target.language}\u0000${target.instrumented_library}`;
   const byLibrary = new Map();
   for (const target of targets) {
-    const key = target.instrumented_library;
+    const key = group(target);
     if (!byLibrary.has(key)) byLibrary.set(key, new Set());
     byLibrary.get(key).add(target.label);
   }
@@ -237,7 +242,7 @@ export function distinguish(targets) {
     targets.map((target) => {
       const parts = [];
       if (target.backend) parts.push(target.backend);
-      if (byLibrary.get(target.instrumented_library).size > 1) {
+      if (byLibrary.get(group(target)).size > 1) {
         parts.push(target.label);
       }
       if (sides.size > 1 && target.side) parts.push(target.side);

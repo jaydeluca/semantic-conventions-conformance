@@ -12,7 +12,7 @@ import {
   languageColor,
   levelColor,
 } from "../data.js";
-import { el, filterBar, levelLegend, palette } from "../ui.js";
+import { el, filterBar, levelLegend, palette, trackBand } from "../ui.js";
 import { go, setParams } from "../route.js";
 
 /** The three requirement-level views, the first being the default. */
@@ -215,14 +215,17 @@ export default function signals(data, key, params) {
     ? Object.keys(chosen.attributes).length
     : 0;
 
-  return el("div", {}, [
-    el("div", { class: "controls" }, [
-      el("div", { class: "controls-row" }, [
-        el("h2", { text: "Signal parity" }),
-        picker.node,
-      ]),
-      bar.node,
+  const controls = el("div", { class: "controls" }, [
+    el("div", { class: "controls-row" }, [
+      el("h2", { text: "Signal" }),
+      picker.node,
     ]),
+    bar.node,
+  ]);
+  trackBand(controls);
+
+  return el("div", {}, [
+    controls,
     unknown &&
       el("p", { class: "note" }, [
         el("strong", { text: "No such signal in this report: " }),
@@ -287,8 +290,12 @@ function heatmap(signal, rows, levels, pin) {
       el("tbody", {}, [
         el("tr", { class: "level-head" }, [
           el("th", { colspan: columns.length + 2, scope: "rowgroup" }, [
-            el("i", { style: `background:${levelColor(level)}` }),
-            `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
+            // The heading spans every column, and a cell that wide cannot be
+            // held in place on its own, so the text inside it is what sticks.
+            el("span", {}, [
+              el("i", { style: `background:${levelColor(level)}` }),
+              `${LEVEL_LABEL[level] ?? level} · ${attributes.length}`,
+            ]),
           ]),
         ]),
         ...attributes.map((attribute) => attributeRow(attribute, columns, pin)),
@@ -305,7 +312,7 @@ function heatmap(signal, rows, levels, pin) {
   }
 
   return el("div", {}, [
-    el("div", { class: "scroller fit" }, [
+    el("div", { class: "scroller" }, [
       el("table", { class: "heatmap" }, [
         el("thead", {}, [languageBands(columns), header]),
         ...groups,
