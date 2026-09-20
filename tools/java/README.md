@@ -103,6 +103,10 @@ with `conformanceArtifacts`; Gradle records their selected versions in
 `artifacts.json`, and `prepare` atomically copies that file into the current
 conformance directory.
 
+A version is joined to what a target declares by the directory and then by
+`role`. The `instrumentation_library` role carries the same Maven coordinate
+the target's `conformance.yaml` declares, so the two are compared exactly.
+
 `run` executes `java` directly rather than through Gradle, so the scenario
 inherits the fresh OTLP endpoint the runner injected instead of whatever a
 long-lived Gradle daemon started with.

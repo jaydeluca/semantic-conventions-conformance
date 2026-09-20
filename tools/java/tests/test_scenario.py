@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import otel_conformance_java
+from opentelemetry.conformance import load_spec
 from otel_conformance_java import (
     AGENT_CONTROL_JAR,
     ARTIFACTS_FILE,
@@ -353,3 +354,76 @@ class TestRunning:
             argument.startswith("-javaagent:") for argument in commands[0]
         )
         assert commands[0][-2:] == [SCENARIO_LAUNCHER, MAIN]
+
+
+# Not using a fixture here because these assert whether the
+# real manifest beside each target agrees with what that target declares
+CHECKOUT = Path(__file__).resolve().parents[3]
+
+
+def _java_targets() -> list[Path]:
+    """Every Java target in the tree, by the conformance.yaml naming it."""
+    return sorted(
+        spec.parent
+        for spec in CHECKOUT.glob("scenarios/*/java/**/conformance.yaml")
+    )
+
+
+class TestCommittedArtifactMetadata:
+    def test_each_manifest_covers_both_libraries_its_target_declares(
+        self,
+    ) -> None:
+        """A manifest lists target names.
+
+        The report joins a version to a target by directory and then by
+        role, so a manifest that omits a role, or claims a role twice, would
+        leave a declared library with no version or an ambiguous one.
+        """
+        for target in _java_targets():
+            manifest = target / ARTIFACTS_FILE
+            if not manifest.is_file():
+                # TODO: when all modules have manifests, turn this into a failing check
+                # for any that are missing
+                continue
+            spec = load_spec(target)
+            metadata = json.loads(manifest.read_text(encoding="utf-8"))
+            by_role = {
+                artifact["role"]: artifact
+                for artifact in metadata["artifacts"]
+            }
+
+            assert len(by_role) == len(metadata["artifacts"]), target
+            assert set(by_role) == {
+                "instrumented_library",
+                "instrumentation_library",
+            }, target
+            assert (
+                by_role["instrumentation_library"]["coordinate"]
+                == spec.instrumentation_library
+            ), target
+            for role, artifact in by_role.items():
+                assert artifact["ecosystem"] == "maven", (target, role)
+                assert artifact["version"].strip(), (target, role)
+
+    def test_targets_sharing_a_launch_project_record_the_same_build(
+        self,
+    ) -> None:
+        """One resolution, so one manifest, however many targets copy it.
+
+        `prepare` copies the generated manifest into whichever conformance
+        directory it was run from, and Armeria's client and server are two
+        targets of one Gradle project. Differing bytes would mean two
+        targets credit the same build with different releases.
+        """
+        by_project: dict[tuple[str, ...], set[bytes]] = {}
+        for target in _java_targets():
+            manifest = target / ARTIFACTS_FILE
+            spec = load_spec(target)
+            if not manifest.is_file() or spec.setup is None:
+                continue
+            by_project.setdefault(spec.setup, set()).add(
+                manifest.read_bytes()
+            )
+
+        for setup, contents in by_project.items():
+            assert len(contents) == 1, setup
