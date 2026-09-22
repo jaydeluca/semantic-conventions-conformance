@@ -4,7 +4,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { attributeUrl, distinguish, load } from "../assets/data.js";
+import {
+  attributeUrl,
+  distinguish,
+  load,
+  loadVersions,
+} from "../assets/data.js";
 import { report, target } from "./fixtures.js";
 
 test("load fetches the report and rejects unsupported schemas and HTTP failures", async (t) => {
@@ -21,6 +26,26 @@ test("load fetches the report and rejects unsupported schemas and HTTP failures"
   await assert.rejects(load(), /schema_version 999/);
   globalThis.fetch = async () => ({ ok: false, status: 404 });
   await assert.rejects(load(), /404/);
+});
+
+test("load fetches whatever file it is given, for a non-default report", async (t) => {
+  t.mock.method(globalThis, "fetch", async (url) => {
+    assert.equal(url, "data/conformance-2.29.0.json");
+    return { ok: true, json: async () => report() };
+  });
+  await load("data/conformance-2.29.0.json");
+});
+
+test("loadVersions fetches and returns the version manifest", async (t) => {
+  const versions = [
+    { id: "a", label: "A", file: "data/conformance.json" },
+    { id: "b", label: "B", file: "data/conformance-b.json" },
+  ];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    assert.equal(url, "data/versions.json");
+    return { ok: true, json: async () => versions };
+  });
+  assert.deepEqual(await loadVersions(), versions);
 });
 
 test("compatible declarations from different runners can be compared", async (t) => {

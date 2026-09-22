@@ -92,20 +92,39 @@ async function fetchJson(url) {
 const SCHEMA_VERSION = 1;
 
 /**
- * Fetch `data/conformance.json` and index it.
+ * Fetch a report and index it.
  *
+ * @param {string} [file] path to fetch, relative to the page
  * @returns {Promise<Data>} the indexed report
  * @throws if the fetch fails or the report is a schema this file cannot read
  */
-export async function load() {
-  const report = await fetchJson("data/conformance.json");
+export async function load(file = "data/conformance.json") {
+  const report = await fetchJson(file);
   if (report.schema_version !== SCHEMA_VERSION) {
     throw new Error(
-      `data/conformance.json is schema_version ${report.schema_version}; ` +
+      `${file} is schema_version ${report.schema_version}; ` +
         `this page reads ${SCHEMA_VERSION}`,
     );
   }
   return index(report);
+}
+
+/**
+ * @typedef {object} VersionEntry one selectable report, e.g. one agent build
+ * @property {string} id stable key, used in the `?v=` query and as the
+ *   `<select>` value
+ * @property {string} label shown in the picker
+ * @property {string} file passed to {@link load}
+ */
+
+/**
+ * Fetch the optional list of alternate reports (e.g. one per agent version).
+ * Absent on a checkout that only ever built the one committed report.
+ *
+ * @returns {Promise<VersionEntry[]>}
+ */
+export async function loadVersions() {
+  return fetchJson("data/versions.json");
 }
 
 /** How a signal is addressed, in the index below and in a `#/signals/` link. */
