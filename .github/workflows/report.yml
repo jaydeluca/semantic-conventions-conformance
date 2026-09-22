@@ -1,11 +1,6 @@
 name: Report
 
-# Rebuilds `docs/data/conformance.json`, the aggregate the site reads, and opens
-# a pull request when it changed.
-#
-# It runs nightly rather than on every pull request because rebuilding needs
-# weaver and a fetched registry. The trade-off is that the committed report, and
-# so the site, can be a day behind the tree.
+# Rebuild the site's aggregate report nightly and open a PR when it changes.
 on:
   schedule:
     # Off the hour: GitHub's scheduler queues runs scheduled at :00.
@@ -15,8 +10,7 @@ on:
 permissions:
   contents: read
 
-# One rebuild at a time: two runs would race on the same branch, and the loser
-# would force-push a report built from the older tree.
+# Serialize updates to the shared report branch.
 concurrency:
   group: report
   cancel-in-progress: false
@@ -25,13 +19,20 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      REPORT_BRANCH: chore/conformance-report
+    defaults:
+      run:
+        shell: bash
     permissions:
-      contents: write # to push the branch the pull request is opened from
-      pull-requests: write # to open it
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
@@ -55,9 +56,7 @@ jobs:
           path: ~/.cache/otel-conformance/semconv
           key: semconv-${{ hashFiles('tools/**/versions.env') }}
 
-      # Every domain wrapper a `runner:` can name, because the report imports
-      # one to read what its registry declares. The per-language launchers are
-      # not needed: the report never builds or runs a scenario.
+      # The report imports each domain runner to read its registry declarations.
       - name: Install the report tool
         run: |
           python -m pip install --upgrade pip
@@ -71,48 +70,80 @@ jobs:
             -e tools/http/runner \
             -e tools/report
 
-      # Kept before the rebuild overwrites it, so the summary below can say what
-      # changed rather than only where things stand.
       - name: Keep the committed report to diff against
         run: cp docs/data/conformance.json "$RUNNER_TEMP/base.json"
 
       - name: Rebuild the report
         run: otel-conformance-report build
 
-      # `markdown` rebuilds rather than reading the file above; the registry is
-      # cached by now. The same text becomes the pull request body.
+      # `markdown` rebuilds the report using the now-cached registries.
       - name: Summarise
         run: |
           otel-conformance-report markdown \
             --against "$RUNNER_TEMP/base.json" \
             | tee "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
 
-      # A pull request opened with GITHUB_TOKEN does not trigger workflows, so
-      # `Runner` would never go green on it. Without otelbot installed here the
-      # pull request still opens, but a maintainer must close and reopen it.
+      - name: Check for changes
+        id: diffcheck
+        run: |
+          git add docs/data/conformance.json
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Use otelbot to trigger PR checks; with GITHUB_TOKEN, a maintainer must
+      # close and reopen the PR to trigger them.
       # https://github.com/open-telemetry/admin/blob/main/scripts/create_otelbot_app.py
       - name: Mint an otelbot token
         id: otelbot
-        if: vars.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_CLIENT_ID != ''
+        if: steps.diffcheck.outputs.has_diff == 'true' && vars.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_CLIENT_ID != ''
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_CLIENT_ID }}
           private-key: ${{ secrets.OTELBOT_SEMANTIC_CONVENTIONS_CONFORMANCE_PRIVATE_KEY }}
-          # Narrowed from the app's blanket install permissions; without these
-          # the token can do anything the app can, in every repo it is on.
+          # Limit the token to the permissions needed to update the PR.
           permission-contents: write
           permission-pull-requests: write
 
-      # No-ops when the rebuild matched what was committed. One long-lived
-      # branch, force-pushed, so a night landing on an unmerged report replaces
-      # it instead of opening a second pull request.
-      - name: Open a pull request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ steps.otelbot.outputs.token || secrets.GITHUB_TOKEN }}
-          add-paths: docs/data/conformance.json
-          branch: chore/conformance-report
-          delete-branch: true
-          commit-message: "chore: update the conformance report"
-          title: "chore: update the conformance report"
-          body-path: ${{ runner.temp }}/summary.md
+      - name: Commit and push changes
+        if: steps.diffcheck.outputs.has_diff == 'true'
+        env:
+          GH_TOKEN: ${{ steps.otelbot.outputs.token || github.token }}
+          USE_OTELBOT: ${{ steps.otelbot.outputs.token != '' }}
+        run: |
+          if [ "$USE_OTELBOT" = "true" ]; then
+            git config user.name "otelbot"
+            git config user.email "197425009+otelbot@users.noreply.github.com"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          fi
+          gh auth setup-git
+          git checkout -B "$REPORT_BRANCH"
+          git commit -m "chore: update the conformance report"
+          # Include any workflow changes that landed during the build before pushing.
+          git fetch origin main
+          if ! git merge --no-edit origin/main; then
+            echo "::error::Failed to merge the latest main into the report update."
+            git merge --abort
+            exit 1
+          fi
+          git push --force origin "$REPORT_BRANCH"
+
+      - name: Create or update the pull request
+        if: steps.diffcheck.outputs.has_diff == 'true'
+        env:
+          GH_TOKEN: ${{ steps.otelbot.outputs.token || github.token }}
+        run: |
+          pr_url=$(gh pr list --state open --head "$REPORT_BRANCH" --base main --json url --jq '.[0].url')
+          if [ -z "$pr_url" ]; then
+            gh pr create \
+              --title "chore: update the conformance report" \
+              --body-file "$RUNNER_TEMP/summary.md" \
+              --head "$REPORT_BRANCH" \
+              --base main
+          else
+            gh pr edit "$pr_url" --body-file "$RUNNER_TEMP/summary.md"
+          fi
