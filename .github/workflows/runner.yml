@@ -485,6 +485,28 @@ jobs:
           done
           exit "$status"
 
+      - name: Create the generated data patch
+        id: data-patch
+        if: ${{ !cancelled() }}
+        env:
+          DATA_PATCH: ${{ runner.temp }}/data.patch
+        run: |
+          data_pathspec=":(glob)$SCENARIO_ROOT/**/data.json"
+          git add --intent-to-add -- "$SCENARIO_ROOT"
+          git diff --binary -- "$data_pathspec" > "$DATA_PATCH"
+          if [[ -s "$DATA_PATCH" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the generated data patch
+        if: ${{ !cancelled() && steps.data-patch.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: renovate-data-${{ matrix.matrix_id }}
+          path: ${{ runner.temp }}/data.patch
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Check the committed coverage is up to date
         if: ${{ !cancelled() }}
         run: |
