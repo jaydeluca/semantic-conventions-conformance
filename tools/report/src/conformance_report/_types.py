@@ -62,6 +62,7 @@ class RegistryPin(TypedDict):
 
 
 class Report(TypedDict):
+    DO_NOT_EDIT: str
     schema_version: int
     generated_by: str
     domains: dict[str, RegistryPin]

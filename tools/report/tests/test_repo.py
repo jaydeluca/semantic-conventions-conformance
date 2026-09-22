@@ -10,7 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from conformance_report._aggregate import GENERATED_BY, SCHEMA_VERSION
+from conformance_report._aggregate import (
+    DO_NOT_EDIT,
+    GENERATED_BY,
+    SCHEMA_VERSION,
+)
 from conformance_report._types import Report
 
 REPORT = Path(__file__).parents[3] / "docs" / "data" / "conformance.json"
@@ -72,7 +76,9 @@ def test_coverage_agrees_with_registry(report: Report) -> None:
 def test_generation_metadata(report: Report) -> None:
     assert report["schema_version"] == SCHEMA_VERSION
     assert report["generated_by"] == GENERATED_BY
+    assert report["DO_NOT_EDIT"] == DO_NOT_EDIT
     assert set(report) == {
+        "DO_NOT_EDIT",
         "schema_version",
         "generated_by",
         "domains",
