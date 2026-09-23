@@ -370,6 +370,7 @@ h2 {
   border-radius: 4px;
   background: var(--bg);
   color: var(--ink);
+  max-width: 60ch;
 }
 .pills,
 .segments {
@@ -441,7 +442,6 @@ h2 {
 .count {
   color: var(--ink-3);
   font-size: 0.8rem;
-  margin-left: auto;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
