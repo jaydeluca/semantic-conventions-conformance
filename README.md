@@ -7,6 +7,8 @@ library, collect what it emits through
 [Weaver live-check](https://github.com/open-telemetry/weaver), and check it
 against expectations declared in YAML.
 
+See a report of the results [here](https://open-telemetry.github.io/semantic-conventions-conformance/) (work in progress).
+
 | | |
 | --- | --- |
 | [`tools/runner/`](tools/runner) | the runner. Generic — it carries no semantic conventions of its own |
