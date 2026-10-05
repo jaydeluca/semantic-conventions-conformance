@@ -11,14 +11,9 @@ from typing import Any, Iterable, Mapping
 
 from ._aggregate import render as render_json
 
-_SITE = "https://open-telemetry.github.io/semantic-conventions-conformance/"
-
 # A finding that moves the same way in this many targets is usually one
-# cause, such as a new check, so it is listed once rather than per target.
+# cause, such as a new check, so it is worth calling out in the summary.
 _WIDESPREAD = 10
-
-# Limit large diffs so the job summary and PR body remain readable.
-_CHANGES = 200
 
 
 def _plural(count: int, noun: str) -> str:
@@ -70,7 +65,7 @@ def _headline(
         )
     return (
         f"{_plural(len(document.get('targets', [])), 'target')}, {findings}. "
-        f"Report {size}. [View the site]({_SITE})."
+        f"Report {size}."
     )
 
 
@@ -116,7 +111,7 @@ def render_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> str:
         return {t["id"]: t for t in document.get("targets", [])}
 
     old, new = index(before), index(after)
-    # Registry pins first and outside the fold: they explain the rest.
+    # Registry pins first: they explain the rest.
     lines: list[str] = list(_registry_diff(before, after))
 
     moved = {
@@ -127,66 +122,31 @@ def render_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> str:
         target_id: _findings(old[target_id]) - _findings(new[target_id])
         for target_id in moved
     }
-    widespread: set[tuple[str, bool]] = set()
     for rising, deltas in ((True, moved), (False, falling)):
         spread = collections.Counter(k for d in deltas.values() for k in d)
         for name, count in sorted(spread.items()):
             if count < _WIDESPREAD:
                 continue
-            widespread.add((name, rising))
             change = sum(d[name] for d in deltas.values())
             lines.append(
                 f"- finding `{name}` {'+' if rising else '−'}{change} "
                 f"across {count} targets"
             )
 
-    blocks: list[list[str]] = []
-    for target_id in sorted(set(old) | set(new)):
-        if target_id not in old:
-            blocks.append([f"- added `{target_id}`"])
-        elif target_id not in new:
-            blocks.append([f"- removed `{target_id}`"])
-        else:
-            items = list(
-                _target_diff(old[target_id], new[target_id], widespread)
-            )
-            if items:
-                blocks.append(
-                    [f"- `{target_id}`", *(f"  {item}" for item in items)]
-                )
-
-    if blocks:
-        shown: list[str] = []
-        kept = 0
-        for block in blocks:
-            remaining = _CHANGES - len(shown)
-            if len(block) > remaining:
-                # Keep the target heading with at least one change, and
-                # distinguish its omitted changes from untouched targets.
-                if remaining >= 2:
-                    shown += block[:remaining]
-                    shown.append(
-                        f"  - _…and "
-                        f"{_plural(len(block) - remaining, 'further change')}._"
-                    )
-                    kept += 1
-                break
-            shown += block
-            kept += 1
-        if kept < len(blocks):
-            shown.append(
-                f"- _…and {_plural(len(blocks) - kept, 'further target')}._"
-            )
-        if lines:
-            lines.append("")
-        lines += [
-            f"<details><summary>Changes in "
-            f"{_plural(len(blocks), 'target')}</summary>",
-            "",
-            *shown,
-            "",
-            "</details>",
-        ]
+    added = len(new.keys() - old.keys())
+    removed = len(old.keys() - new.keys())
+    changed = sum(
+        old[target_id].get("signals", []) != new[target_id].get("signals", [])
+        or _findings(old[target_id]) != _findings(new[target_id])
+        for target_id in old.keys() & new.keys()
+    )
+    for count, action in (
+        (added, "added"),
+        (removed, "removed"),
+        (changed, "changed"),
+    ):
+        if count:
+            lines.append(f"- {_plural(count, 'target')} {action}")
     if not lines:
         return ""
     return "\n".join(["### Conformance changes", "", *lines]) + "\n"
@@ -215,75 +175,3 @@ def _registry_diff(
                     f"- registry `{name}` {what} `{was.get(field)}` → "
                     f"`{now.get(field)}`"
                 )
-
-
-def _signals(target: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
-    return {f"{s['type']} {s['name']}": s for s in target.get("signals", [])}
-
-
-def _signal_diff(
-    signal: str, old: Mapping[str, Any], new: Mapping[str, Any]
-) -> Iterable[str]:
-    old_emitted = set(old.get("emitted", []))
-    new_emitted = set(new.get("emitted", []))
-    attributes = " ".join(
-        f"**{sign}** " + ", ".join(f"`{a}`" for a in sorted(names))
-        for sign, names in (
-            ("+", new_emitted - old_emitted),
-            ("−", old_emitted - new_emitted),
-        )
-        if names
-    )
-    if attributes:
-        yield f"- `{signal}` {attributes}"
-
-    # Requirement changes can move coverage without changing emitted names.
-    was: Mapping[str, Mapping[str, int]] | None = old.get("coverage")
-    now: Mapping[str, Mapping[str, int]] | None = new.get("coverage")
-    if was is None and now is None:
-        return
-    if was is None or now is None:
-        state = "now" if was is None else "no longer"
-        yield f"- `{signal}` {state} declared by the registry"
-        return
-    for level in sorted(set(was) | set(now)):
-        before = was.get(level, {"emitted": 0, "declared": 0})
-        after = now.get(level, {"emitted": 0, "declared": 0})
-        # Attribute changes can explain numerator moves, but registry
-        # denominator changes and required coverage stay explicit.
-        if before != after and (
-            not attributes
-            or level == "required"
-            or before["declared"] != after["declared"]
-        ):
-            yield (
-                f"- `{signal}` `{level}` coverage "
-                f"{before['emitted']}/{before['declared']} → "
-                f"{after['emitted']}/{after['declared']}"
-            )
-
-
-def _target_diff(
-    old: Mapping[str, Any],
-    new: Mapping[str, Any],
-    widespread: set[tuple[str, bool]],
-) -> Iterable[str]:
-    was, now = _signals(old), _signals(new)
-    for signal in sorted(set(was) | set(now)):
-        before, after = was.get(signal), now.get(signal)
-        # Report added and removed signals once, without listing each attribute.
-        if before is None:
-            yield f"- `{signal}` **added**"
-        elif after is None:
-            yield f"- `{signal}` **no longer emitted**"
-        else:
-            yield from _signal_diff(signal, before, after)
-
-    before_findings, now_findings = _findings(old), _findings(new)
-    findings: list[str] = []
-    for name in sorted(set(before_findings) | set(now_findings)):
-        delta = now_findings[name] - before_findings[name]
-        if delta and (name, delta > 0) not in widespread:
-            findings.append(f"`{name}` {_signed(delta, str(abs(delta)))}")
-    if findings:
-        yield f"- findings {', '.join(findings)}"
