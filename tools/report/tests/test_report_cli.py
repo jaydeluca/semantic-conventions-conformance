@@ -88,8 +88,23 @@ def test_markdown_says_what_the_run_covered(
     assert _cli.cli(["--root", str(tmp_path), "markdown"]) == 0
     printed = capsys.readouterr().out
     assert "Semantic-convention conformance" in printed
-    assert "1 target across 1 python" in printed
-    assert "open-telemetry/demo @ `v1.0.0`" in printed
+    assert "1 target, 0 findings." in printed
+    assert "gzipped" in printed
+    assert "open-telemetry/demo @ `v1.0.0` (`demo-conformance`)" in printed
+    assert "Conformance changes" not in printed
+
+
+def test_markdown_against_a_previous_report_says_what_moved(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_target(tmp_path, TARGET)
+    report = build_into(tmp_path)
+    against = ["markdown", "--against", str(report)]
+    assert _cli.cli(["--root", str(tmp_path), *against]) == 0
+    printed = capsys.readouterr().out
+    assert "1 target, 0 findings (+0)." in printed
+    assert "gzipped (+0 B)" in printed
+    assert printed.endswith("No conformance changes.\n")
 
 
 def test_the_diff_names_the_attribute_that_moved() -> None:
@@ -117,7 +132,7 @@ def test_the_diff_names_the_attribute_that_moved() -> None:
         report(["demo.required", "demo.recommended"], []),
     )
     assert "**+** `demo.recommended`" in changes
-    assert "finding `unit_mismatch` −1" in changes
+    assert "  - findings `unit_mismatch` −1" in changes
 
 
 def test_the_diff_names_a_denominator_that_moved_on_its_own() -> None:
@@ -204,8 +219,8 @@ def test_the_diff_names_a_signal_that_appeared() -> None:
         {"targets": [target]},
         {"targets": [{**target, "signals": [signal]}]},
     )
-    lines = [line for line in changes.splitlines() if line.startswith("- ")]
-    assert lines == [f"- `{TARGET}` `metric demo.duration` **added**"]
+    lines = [line for line in changes.splitlines() if "- " in line]
+    assert lines == [f"- `{TARGET}`", "  - `metric demo.duration` **added**"]
 
     gone = _markdown.render_diff(
         {"targets": [{**target, "signals": [signal]}]},
@@ -265,5 +280,53 @@ def test_a_diff_too_large_for_a_job_summary_is_truncated() -> None:
     lines = [line for line in changes.splitlines() if line.startswith("- ")]
     assert len(lines) == _markdown._CHANGES + 1
     assert lines[-1].endswith(
-        f"and {wide + 1 - _markdown._CHANGES} further changes._"
+        f"and {wide + 1 - _markdown._CHANGES} further targets._"
     )
+
+
+def test_a_coverage_move_the_attributes_explain_is_left_out() -> None:
+    """Except for `required`, where a drop is the line a reviewer wants."""
+
+    def report(
+        emitted: list[str], required: int, recommended: int
+    ) -> dict[str, Any]:
+        signal = {
+            "type": "span",
+            "name": "demo.client",
+            "emitted": emitted,
+            "coverage": {
+                "required": {"emitted": required, "declared": 1},
+                "recommended": {"emitted": recommended, "declared": 1},
+            },
+        }
+        return {"targets": [{"id": TARGET, "signals": [signal]}]}
+
+    changes = _markdown.render_diff(report(["a", "b"], 1, 1), report([], 0, 0))
+    assert "  - `span demo.client` **−** `a`, `b`" in changes
+    assert "`required` coverage 1/1 → 0/1" in changes
+    assert "`recommended` coverage" not in changes
+
+
+def test_a_finding_that_moved_everywhere_is_listed_once() -> None:
+    """A new check adds the same finding to every target in one run."""
+    many = _markdown._WIDESPREAD
+
+    def report(findings: list[dict[str, str]]) -> dict[str, Any]:
+        return {
+            "targets": [
+                {"id": f"{TARGET}/{n}", "signals": [], "findings": findings}
+                for n in range(many)
+            ]
+        }
+
+    changes = _markdown.render_diff(
+        report([{"id": "unit_mismatch"}]),
+        report([{"id": "new_check"}, {"id": "new_check"}]),
+    )
+    assert (
+        f"- finding `new_check` +{2 * many} across {many} targets" in changes
+    )
+    assert (
+        f"- finding `unit_mismatch` −{many} across {many} targets" in changes
+    )
+    assert "<details>" not in changes
