@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.diffplug.spotless:spotless-plugin-gradle:8.10.2")
+    implementation("com.diffplug.spotless:spotless-plugin-gradle:8.10.3")
     implementation("net.ltgt.gradle:gradle-errorprone-plugin:5.1.1")
 
     testImplementation(gradleTestKit())
