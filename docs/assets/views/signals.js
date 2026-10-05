@@ -13,7 +13,7 @@ import {
   levelColor,
 } from "../data.js";
 import { el, filterBar, levelLegend, palette, trackBand } from "../ui.js";
-import { go, setParams } from "../route.js";
+import { go, setParams, targetHref } from "../route.js";
 
 /** The three requirement-level views, the first being the default. */
 const LEVEL_CHOICES = [
@@ -93,7 +93,7 @@ function restore(params) {
     languages: languages ? languages.split(",").filter(Boolean) : [],
     level: read("level"),
     distribution: read("dist"),
-    library: read("lib") || read("library"),
+    library: read("lib"),
   };
 }
 
@@ -362,7 +362,7 @@ function columnHeader(target, label) {
       el(
         "a",
         {
-          href: `#/target/${target.id.split("/").map(encodeURIComponent).join("/")}`,
+          href: targetHref(target.id),
           title: full,
           "aria-label": full,
         },

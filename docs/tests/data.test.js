@@ -219,9 +219,8 @@ test("every committed signal has distinct column labels within each language", a
   }
 });
 
-test("committed targets round-trip and every finding has explicit semantics", async (t) => {
-  const { FINDING_KIND, findingKind, ratio } =
-    await import("../assets/data.js");
+test("committed targets round-trip and unclassified findings stay visible", async (t) => {
+  const { findingKind, ratio } = await import("../assets/data.js");
   const document = JSON.parse(
     await readFile(
       new URL("../data/conformance.json", import.meta.url),
@@ -233,11 +232,8 @@ test("committed targets round-trip and every finding has explicit semantics", as
     json: async () => document,
   }));
   const data = await load();
-  for (const target of document.targets) {
+  for (const target of document.targets)
     assert.equal(data.byId.get(target.id), target);
-    for (const finding of target.findings)
-      assert.ok(Object.hasOwn(FINDING_KIND, finding.id), finding.id);
-  }
   assert.equal(findingKind("unknown_rule"), "violation");
   assert.equal(findingKind("missing_attribute"), "unregistered");
   assert.equal(ratio({ emitted: 0, declared: 0 }), null);

@@ -45,6 +45,13 @@ export function go(path) {
 }
 
 /**
+ * @param {string} id a target id, whose `/`s stay path separators
+ * @returns {string} the hash that opens that target's page
+ */
+export const targetHref = (id) =>
+  `#/target/${id.split("/").map(encodeURIComponent).join("/")}`;
+
+/**
  * Record filter state on the current route without re-rendering. Empty values
  * are dropped, so an unfiltered view keeps a clean URL.
  *

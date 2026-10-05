@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { load } from "../assets/data.js";
+import { findingKind, load } from "../assets/data.js";
 import { split } from "../assets/route.js";
 import view, { title } from "../assets/views/target.js";
 import signals from "../assets/views/signals.js";
@@ -54,10 +54,19 @@ function detailed() {
           id: "new_rule",
           message: "Unknown violation",
           signal_type: "span",
-          signal_name: "query",
+          // The span's own name, which is not the registry's.
+          signal_name: "SELECT",
         },
       ],
       entities: { service: { identity: ["service.name"], description: [] } },
+    }),
+    // A second instrumentation of jdbc, so the same-library link has a peer.
+    target({
+      id: "database/java/mariadb/jdbc/other",
+      instrumentation_library: "other",
+      label: "other",
+      path: "scenarios/database/java/mariadb/jdbc/other",
+      signals: [{ type: "metric", name: "db.duration", emitted: [] }],
     }),
   ]);
   document.registry["database-conformance"].spans = {
@@ -118,7 +127,7 @@ test("facts, typed panels, coverage attributes, entities and comparison links", 
     a.textContent.startsWith("Compare all"),
   );
   const route = split(same.getAttribute("href"));
-  assert.equal(route.params.get("library"), "jdbc");
+  assert.equal(route.params.get("lib"), "jdbc");
   assert.equal(
     signals(
       data,
@@ -143,7 +152,7 @@ test("findings are classified, counted, folded, and reached from signal cards", 
   );
   assert.equal(
     page.querySelector(".finding-counts").textContent,
-    "5 violations · 1 expected-not-emitted · 1 not in the registry",
+    "5 breaking the convention · 1 expected, not emitted · 1 not in the registry",
   );
   assert.equal(page.querySelectorAll(".finding").length, 7);
   assert.equal(page.querySelector("#finding-missing_attribute").open, false);
@@ -156,7 +165,12 @@ test("findings are classified, counted, folded, and reached from signal cards", 
   assert.match(
     page.querySelector('section[aria-label="Events"] .signal-findings')
       .textContent,
-    /1 findings/,
+    /1 finding:/,
+  );
+  assert.match(
+    page.querySelector('section[aria-label="Spans"] .signal-findings')
+      .textContent,
+    /1 finding:/,
   );
   page.querySelector('[data-finding="finding-type_mismatch"]').click();
   assert.equal(page.querySelector("#finding-type_mismatch").open, true);
@@ -219,5 +233,20 @@ test("every committed target renders all findings, including the largest run", a
       item.signals.length,
       item.id,
     );
+    // Span findings carry the span's own name, so a sole span is the only one
+    // they can be placed on without guessing.
+    const spans = page.querySelector('section[aria-label="Spans"]');
+    const placed = [...(spans?.querySelectorAll(".signal-findings a") ?? [])]
+      .map((a) => Number(a.textContent.match(/\((\d+)\)$/)[1]))
+      .reduce((sum, n) => sum + n, 0);
+    if (item.signals.filter((s) => s.type === "span").length === 1)
+      assert.equal(
+        placed,
+        item.findings.filter(
+          (f) =>
+            f.signal_type === "span" && findingKind(f.id) !== "unregistered",
+        ).length,
+        item.id,
+      );
   }
 });

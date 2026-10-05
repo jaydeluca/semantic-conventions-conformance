@@ -283,7 +283,12 @@ export function fullLabel(target) {
     .join(" · ");
 }
 
-/** Explicit Weaver rule semantics; unknown rules remain visible as violations. */
+/**
+ * What each finding id says, for grouping on the target page. Nothing upstream
+ * classifies ids, and the runner's advice policies add new ones, so this is
+ * not expected to be complete: an id missing here is shown as breaking the
+ * convention, which is the one reading that does not hide it.
+ */
 export const FINDING_KIND = {
   missing_attribute: "unregistered",
   missing_metric: "unregistered",

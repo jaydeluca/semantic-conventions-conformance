@@ -10,18 +10,21 @@ import {
   attributeUrl,
 } from "../data.js";
 import { coverageBar, el, levelBar, palette, trackBand } from "../ui.js";
-import { go } from "../route.js";
+import { go, targetHref } from "../route.js";
 
 const REPO =
   "https://github.com/open-telemetry/semantic-conventions-conformance";
+// Every committed finding is a weaver `violation`; these split them by what
+// they say, so the first bucket cannot reuse that word.
 const KINDS = {
-  violation: "Violations",
+  violation: "Breaks the convention",
   absent: "Expected, not emitted",
   unregistered: "Emitted, not in the registry",
 };
 const signalKey = (signal) => `${signal.type}:${signal.name}`;
 const compareUrl = (key) => `#/signals/${encodeURIComponent(key)}`;
 const groupId = (id) => `finding-${id}`;
+const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 /** @param {import('../data.js').Data} data @param {string|null} id */
 export function title(data, id) {
@@ -48,8 +51,7 @@ export default function target(data, id) {
           a.group.localeCompare(b.group) || a.name.localeCompare(b.name),
       ),
     value: id,
-    onPick: (value) =>
-      go("/target/" + value.split("/").map(encodeURIComponent).join("/")),
+    onPick: (value) => go(targetHref(value).slice(1)),
   });
   const controls = el("div", { class: "controls" }, [
     el("div", { class: "controls-row" }, [
@@ -137,26 +139,27 @@ function facts(data, found) {
       }),
     ],
   ];
-  const peers = data.targets.filter(
-    (target) =>
-      target.language === found.language &&
-      target.instrumented_library === found.instrumented_library,
+  const peers = new Set(
+    data.targets.filter(
+      (target) =>
+        target.language === found.language &&
+        target.instrumented_library === found.instrumented_library,
+    ),
   );
   const common = [...data.signals.values()]
-    .filter((signal) =>
-      signal.rows.some(({ target }) => peers.includes(target)),
-    )
+    .map((signal) => ({
+      signal,
+      shared: signal.rows.filter(({ target }) => peers.has(target)).length,
+    }))
+    .filter(({ shared }) => shared > 0)
     .sort(
-      (a, b) =>
-        b.rows.filter(({ target }) => peers.includes(target)).length -
-          a.rows.filter(({ target }) => peers.includes(target)).length ||
-        a.key.localeCompare(b.key),
-    )[0];
-  if (common)
+      (a, b) => b.shared - a.shared || a.signal.key.localeCompare(b.signal.key),
+    )[0]?.signal;
+  if (peers.size > 1 && common)
     rows.push([
       "Same library",
       el("a", {
-        href: `${compareUrl(common.key)}?${new URLSearchParams({ library: found.instrumented_library })}`,
+        href: `${compareUrl(common.key)}?${new URLSearchParams({ lib: found.instrumented_library })}`,
         text: `Compare all instrumentations of ${found.instrumented_library}`,
       }),
     ]);
@@ -192,7 +195,7 @@ function scores(found) {
       el("dt", { text: "Findings" }),
       el("dd", {
         class: "finding-counts",
-        text: `${counts.violation} violations · ${counts.absent} expected-not-emitted · ${counts.unregistered} not in the registry`,
+        text: `${counts.violation} breaking the convention · ${counts.absent} expected, not emitted · ${counts.unregistered} not in the registry`,
       }),
     ]),
   ]);
@@ -203,10 +206,7 @@ function signalCard(data, found, signal) {
   const attributes = declaration?.attributes ?? {};
   const pin = data.report.domains[found.runner];
   const ownFindings = found.findings.filter(
-    (f) =>
-      findingKind(f.id) !== "unregistered" &&
-      (f.signal_type === "log" ? "event" : f.signal_type) === signal.type &&
-      f.signal_name === signal.name,
+    (f) => findingKind(f.id) !== "unregistered" && belongsTo(found, f, signal),
   );
   return el("div", { class: "card" }, [
     el("h4", {}, [
@@ -276,16 +276,35 @@ function signalCard(data, found, signal) {
     })(),
     ownFindings.length > 0 &&
       el("p", { class: "signal-findings" }, [
-        `${ownFindings.length} findings: `,
+        `${plural(ownFindings.length, "finding")}: `,
         ...[...new Set(ownFindings.map((f) => f.id))].map((id) =>
           el("a", {
-            href: `#/target/${found.id.split("/").map(encodeURIComponent).join("/")}`,
+            href: targetHref(found.id),
             "data-finding": groupId(id),
             text: `${FINDING_LABEL[id] ?? id} (${ownFindings.filter((f) => f.id === id).length})`,
           }),
         ),
       ]),
   ]);
+}
+
+/**
+ * Whether a finding was reported on this signal.
+ *
+ * Metrics and events are named the same on both sides. Spans are not: the
+ * signal is the registry's name (`http.server`) and the finding carries the
+ * span's own (`GET`), and nothing in the report joins the two. A span finding
+ * is only placed when the target emitted a single span; otherwise it stays in
+ * the findings list alone rather than being pinned to a guess.
+ */
+function belongsTo(found, finding, signal) {
+  const type = finding.signal_type === "log" ? "event" : finding.signal_type;
+  if (type !== signal.type) return false;
+  if (finding.signal_name === signal.name) return true;
+  return (
+    type === "span" &&
+    found.signals.filter((other) => other.type === "span").length === 1
+  );
 }
 
 function attributeList(names, kind) {
@@ -382,11 +401,8 @@ function entities(data, found) {
           el("span", { class: "entity-role", text: "identified by" }),
           attributeList(entity.identity, "emitted"),
         ]),
-        // No declared descriptive attributes at all — `service.instance` is
-        // one — which is not the same as having carried none of them.
-        // No declared descriptive attributes is not the same as having
-        // emitted none of them, and an empty `emitted` line beside a full
-        // `not emitted` one says nothing twice.
+        // No declared descriptive attributes — `service.instance` is one —
+        // is not the same as having emitted none of them.
         description.length === 0 &&
           el("dd", {}, [
             el("span", { class: "ver", text: "nothing further declared" }),
