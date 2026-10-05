@@ -144,6 +144,10 @@ const signalKey = (type, name) => `${type}:${name}`;
  * @property {string} label
  * @property {string|null} side
  * @property {string|null} [backend]
+ * @property {{required: Tally, recommended: Tally, findings: number}} summary
+ * @property {{id: string, message: string, signal_type?: string, signal_name?: string}[]} findings
+ * @property {Object<string,{identity: string[], description: string[]}>} entities
+ * @property {string[]} scenario_classes
  * @property {ReportSignal[]} signals
  * @typedef {{attributes: Object<string,string>, kind?: string}} Declaration
  * @typedef {{registry_repo: string, registry_ref: string,
@@ -159,6 +163,7 @@ const signalKey = (type, name) => `${type}:${name}`;
  * @typedef {object} Data
  * @property {Report} report the report as committed
  * @property {Target[]} targets `report.targets`, unwrapped
+ * @property {Map<string,Target>} byId targets keyed by id
  * @property {Map<string,Signal>} signals keyed by `${type}:${name}`
  */
 
@@ -206,7 +211,12 @@ function index(report) {
     }
   }
 
-  return { report, targets, signals };
+  return {
+    report,
+    targets,
+    signals,
+    byId: new Map(targets.map((target) => [target.id, target])),
+  };
 }
 
 function sameAttributes(left, right) {
@@ -272,3 +282,47 @@ export function fullLabel(target) {
     .filter(Boolean)
     .join(" · ");
 }
+
+/** Explicit Weaver rule semantics; unknown rules remain visible as violations. */
+export const FINDING_KIND = {
+  missing_attribute: "unregistered",
+  missing_metric: "unregistered",
+  missing_event: "unregistered",
+  required_attribute_not_present: "absent",
+  recommended_attribute_not_present: "absent",
+  genai_expected_attribute_missing: "absent",
+  http_route_not_present: "absent",
+  error_type_missing_on_error: "absent",
+  span_status_ok_set_by_instrumentation: "violation",
+  genai_span_name_format: "violation",
+  http_span_name_format: "violation",
+  type_mismatch: "violation",
+  unit_mismatch: "violation",
+  genai_content_schema: "violation",
+  genai_operation_name_unknown: "violation",
+  deprecated: "violation",
+};
+export const FINDING_LABEL = {
+  missing_attribute: "Attribute not in the registry",
+  missing_metric: "Metric not in the registry",
+  missing_event: "Event not in the registry",
+  required_attribute_not_present: "Required attribute not emitted",
+  recommended_attribute_not_present: "Recommended attribute not emitted",
+  genai_expected_attribute_missing: "Expected GenAI attribute not emitted",
+  http_route_not_present: "HTTP route not emitted",
+  error_type_missing_on_error: "Error type not emitted on error",
+  span_status_ok_set_by_instrumentation: "Span status set to OK",
+  genai_span_name_format: "GenAI span name format",
+  http_span_name_format: "HTTP span name format",
+  type_mismatch: "Attribute type mismatch",
+  unit_mismatch: "Metric unit mismatch",
+  genai_content_schema: "GenAI content schema",
+  genai_operation_name_unknown: "Unknown GenAI operation",
+  deprecated: "Deprecated convention",
+};
+/** @param {string} id */
+export const findingKind = (id) =>
+  Object.hasOwn(FINDING_KIND, id) ? FINDING_KIND[id] : "violation";
+/** @param {Tally} tally @returns {number|null} */
+export const ratio = (tally) =>
+  tally?.declared ? tally.emitted / tally.declared : null;

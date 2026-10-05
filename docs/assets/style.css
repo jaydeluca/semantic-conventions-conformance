@@ -126,29 +126,67 @@ code,
   background: var(--surface);
 }
 .masthead-row {
-  padding: 1.1rem 1.5rem 0.55rem;
-}
-.masthead h1 {
-  margin: 0;
-  font-size: 1.06rem;
-  font-weight: 620;
-  letter-spacing: -0.01em;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 2.5rem;
+  min-height: 88px;
+  padding: 1rem 1.5rem;
 }
-.mark {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex: none;
-  background: linear-gradient(135deg, var(--required), var(--recommended));
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  color: var(--ink);
+  text-decoration: none;
 }
-.tagline {
-  margin: 0.3rem 0 0 1.75rem;
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  padding: 4px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 11px;
+}
+.brand-mark circle {
+  fill: var(--accent);
+  stroke: var(--accent-soft);
+  stroke-width: 2px;
+}
+.brand-copy {
+  display: grid;
+  gap: 0.2rem;
+  line-height: 1.2;
+}
+.brand-project {
   color: var(--ink-2);
-  font-size: 0.855rem;
-  max-width: 62ch;
+  font-size: 0.7rem;
+  font-weight: 550;
+  letter-spacing: 0.035em;
+}
+.brand-title {
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  padding: 0.65rem 0;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  font-weight: 550;
+  text-decoration: none;
+}
+.source-link:hover {
+  color: var(--accent);
+}
+.masthead a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
 main {
@@ -621,7 +659,7 @@ td.num {
 /* Rotated, and two blocks rather than one string: in vertical writing the block
    axis runs across the screen, so the lines sit side by side and the height is
    the longer one rather than their sum. `overflow` is a backstop. */
-.heatmap thead th.col > span {
+.heatmap thead th.col > a {
   display: block;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
@@ -745,13 +783,20 @@ td.num {
 
 @media (max-width: 720px) {
   .masthead-row {
-    padding: 0.9rem 1rem 0.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .masthead nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .masthead nav a {
+    flex: 1;
+    text-align: center;
   }
   main {
     padding: 1.2rem 1rem 3rem;
-  }
-  .tagline {
-    margin-left: 0;
   }
   .controls {
     margin: -1.2rem -1rem 1rem;
@@ -771,5 +816,264 @@ td.num {
   /* And with the band scrolled away, the pane can have the whole screen. */
   .scroller {
     max-height: max(22rem, calc(100vh - 4rem));
+  }
+}
+
+.masthead nav {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.masthead nav a {
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 0.825rem;
+  font-weight: 550;
+  text-decoration: none;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.masthead nav a:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+.masthead nav a[aria-current="page"] {
+  color: var(--accent);
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 8.5rem;
+}
+.bar-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--miss);
+  overflow: hidden;
+  min-width: 3.5rem;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+.bar-fill.required {
+  background: var(--required);
+}
+.bar-fill.recommended {
+  background: var(--recommended);
+}
+.bar-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  min-width: 3.6rem;
+}
+.bar.na .bar-value {
+  color: var(--ink-3);
+}
+
+.levels {
+  display: flex;
+  height: 9px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--miss);
+}
+.levels > span {
+  display: block;
+}
+.crumbs {
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  margin: 0 0 0.35rem;
+}
+.crumbs a {
+  color: var(--ink-2);
+}
+
+.facts {
+  display: grid;
+  gap: 0.1rem 0.9rem;
+  margin: 1rem 0 1.6rem;
+  grid-template-columns: max-content 1fr;
+  font-size: 0.87rem;
+  align-items: baseline;
+}
+.facts dt {
+  color: var(--ink-2);
+}
+.facts dd {
+  margin: 0;
+}
+
+.entity {
+  display: grid;
+  gap: 0.1rem 0.9rem;
+  margin: 0 0 0.8rem;
+  grid-template-columns: max-content 1fr;
+  font-size: 0.87rem;
+  align-items: baseline;
+}
+.entity:last-child {
+  margin-bottom: 0;
+}
+.entity dt {
+  grid-column: 1 / -1;
+  margin-bottom: 0.15rem;
+}
+.entity dd {
+  margin: 0;
+  display: contents;
+}
+.entity-role {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+.entity .attrs {
+  margin: 0;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.9rem 1rem;
+  margin: 0 0 0.8rem;
+}
+.card > h4 {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.card .kind {
+  font-weight: 400;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+
+.attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.4rem 0 0;
+}
+.attrs :is(code, a) {
+  padding: 0.1rem 0.38rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  font-size: 0.78rem;
+}
+.attrs a {
+  text-decoration: none;
+  color: var(--ink);
+}
+.attrs a:hover {
+  color: var(--accent);
+  border-color: var(--line-strong);
+}
+.attrs a i {
+  font-style: normal;
+  color: var(--ink-3);
+}
+.attrs a i::before {
+  content: " · ";
+}
+.attrs.emitted code {
+  border-color: color-mix(in srgb, var(--good) 40%, transparent);
+}
+.attrs.missing code {
+  color: var(--ink-2);
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+.subhead {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  margin: 0.7rem 0 0;
+}
+.finding {
+  border-left: 3px solid var(--required);
+  padding: 0.35rem 0 0.35rem 0.7rem;
+  margin: 0.5rem 0;
+  font-size: 0.86rem;
+}
+.finding .msg {
+  display: block;
+}
+.finding .where {
+  color: var(--ink-3);
+  font-size: 0.8rem;
+}
+.finding-id {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--required);
+}
+
+details > summary {
+  cursor: pointer;
+  font-size: 0.87rem;
+  padding: 0.2rem 0;
+}
+details[open] > summary {
+  margin-bottom: 0.4rem;
+}
+.heatmap thead th.col > a {
+  color: inherit;
+  text-decoration: none;
+}
+.heatmap thead th.col > a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.attr-level {
+  font-size: 0.8rem;
+  margin: 0.8rem 0 0.2rem;
+  color: var(--ink-2);
+}
+.attrs .emitted {
+  border-color: var(--good);
+}
+.attrs .missing,
+.attrs.missing code {
+  text-decoration: line-through;
+  color: var(--ink-2);
+  border-style: dashed;
+}
+.target-detail {
+  overflow-wrap: anywhere;
+}
+.target-detail .card {
+  scroll-margin-top: calc(var(--controls-h, 5rem) + 1rem);
+}
+.compare {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+@media (max-width: 640px) {
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .facts dt {
+    margin-top: 0.5rem;
   }
 }

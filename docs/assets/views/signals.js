@@ -93,7 +93,7 @@ function restore(params) {
     languages: languages ? languages.split(",").filter(Boolean) : [],
     level: read("level"),
     distribution: read("dist"),
-    library: read("lib"),
+    library: read("lib") || read("library"),
   };
 }
 
@@ -360,8 +360,9 @@ function columnHeader(target, label) {
     },
     [
       el(
-        "span",
+        "a",
         {
+          href: `#/target/${target.id.split("/").map(encodeURIComponent).join("/")}`,
           title: full,
           "aria-label": full,
         },
