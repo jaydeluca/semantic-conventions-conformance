@@ -106,6 +106,9 @@ conformance directory.
 A version is joined to what a target declares by the directory and then by
 `role`. The `instrumentation_library` role carries the same Maven coordinate
 the target's `conformance.yaml` declares, so the two are compared exactly.
+A JDBC target has no `instrumented_library` artifact, because `java.sql`
+ships with the JDK. It records its driver under the `database_driver` role
+instead, so each vendor has its own launch project that adds only its driver.
 
 `run` executes `java` directly rather than through Gradle, so the scenario
 inherits the fresh OTLP endpoint the runner injected instead of whatever a

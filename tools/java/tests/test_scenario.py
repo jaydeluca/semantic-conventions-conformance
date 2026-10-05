@@ -209,6 +209,7 @@ class TestPreparing:
             ("artifacts", [None]),
             ("role", None),
             ("role", []),
+            ("role", "dependency"),
             ("ecosystem", "npm"),
             ("coordinate", ""),
             ("version", None),
@@ -392,11 +393,15 @@ class TestCommittedArtifactMetadata:
                 for artifact in metadata["artifacts"]
             }
 
+            # JDBC's instrumented API ships with the JDK, so a database
+            # target records the driver it ran against in its place.
+            subject = (
+                "database_driver"
+                if spec.runner == "database-conformance"
+                else "instrumented_library"
+            )
             assert len(by_role) == len(metadata["artifacts"]), target
-            assert set(by_role) == {
-                "instrumented_library",
-                "instrumentation_library",
-            }, target
+            assert set(by_role) == {subject, "instrumentation_library"}, target
             assert (
                 by_role["instrumentation_library"]["coordinate"]
                 == spec.instrumentation_library

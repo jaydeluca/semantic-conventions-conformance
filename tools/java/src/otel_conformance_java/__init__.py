@@ -159,7 +159,7 @@ def _valid_artifact_metadata(value: object) -> bool:
             return False
         artifact = cast(dict[str, object], value)
         if artifact.get("role") not in (
-            "instrumented_library", "instrumentation_library"
+            "instrumented_library", "instrumentation_library", "database_driver"
         ) or artifact.get("ecosystem") != "maven":
             return False
         for field in ("coordinate", "version"):

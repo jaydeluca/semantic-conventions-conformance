@@ -19,6 +19,7 @@ import org.gradle.api.tasks.TaskAction
 
 private const val INSTRUMENTED_LIBRARY = "instrumented_library"
 private const val INSTRUMENTATION_LIBRARY = "instrumentation_library"
+private const val DATABASE_DRIVER = "database_driver"
 private const val RUNTIME_CLASSPATH = "runtimeClasspath"
 private const val JAVA_AGENT = "javaAgent"
 
@@ -63,6 +64,12 @@ abstract class ConformanceArtifactsExtension @Inject constructor(objects: Object
             module,
             listOf(RUNTIME_CLASSPATH, JAVA_AGENT),
         )
+    }
+
+    // For JDBC, whose instrumented API ships with the JDK: the driver is the
+    // Maven artifact a target's results depend on.
+    fun databaseDriver(group: String, module: String) {
+        add(DATABASE_DRIVER, group, module, listOf(RUNTIME_CLASSPATH))
     }
 
     private fun add(

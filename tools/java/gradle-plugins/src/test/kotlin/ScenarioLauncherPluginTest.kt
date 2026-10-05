@@ -97,6 +97,36 @@ class ScenarioLauncherPluginTest {
     }
 
     @Test
+    fun `records a runtime-only database driver`() {
+        fixture(
+            """
+            dependencies {
+                runtimeOnly("org.postgresql:postgresql:42.7.13")
+                add("javaAgent", "io.opentelemetry.javaagent:opentelemetry-javaagent:2.31.1")
+            }
+
+            conformanceArtifacts {
+                databaseDriver("org.postgresql", "postgresql")
+                instrumentationLibrary("io.opentelemetry.javaagent", "opentelemetry-javaagent")
+            }
+            """,
+        )
+
+        run("writeConformanceArtifacts")
+
+        assertTrue(
+            artifactsFile()
+                .readText()
+                .contains(
+                    "\"role\": \"database_driver\",\n" +
+                        "      \"ecosystem\": \"maven\",\n" +
+                        "      \"coordinate\": \"org.postgresql:postgresql\",\n" +
+                        "      \"version\": \"42.7.13\"",
+                ),
+        )
+    }
+
+    @Test
     fun `missing selection identifies project role and coordinate`() {
         fixture(
             """
