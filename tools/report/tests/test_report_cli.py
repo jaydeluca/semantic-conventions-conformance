@@ -284,6 +284,62 @@ def test_a_diff_too_large_for_a_job_summary_is_truncated() -> None:
     )
 
 
+@pytest.mark.parametrize("preceding", [0, 1])
+def test_an_oversized_target_keeps_some_changes(preceding: int) -> None:
+    target = {"id": TARGET, "signals": []}
+    signals = [
+        {"type": "metric", "name": f"demo.{n:03d}", "emitted": []}
+        for n in range(_markdown._CHANGES)
+    ]
+    changes = _markdown.render_diff(
+        {"targets": [target]},
+        {
+            "targets": [
+                *({"id": f"0-before-{n}"} for n in range(preceding)),
+                {**target, "signals": signals},
+                {"id": "z-after"},
+            ]
+        },
+    )
+    assert f"- `{TARGET}`\n  - `metric demo.000` **added**" in changes
+    assert changes.count("**added**") == _markdown._CHANGES - preceding - 1
+    omitted = preceding + 1
+    noun = "change" if omitted == 1 else "changes"
+    assert f"  - _…and {omitted} further {noun}._" in changes
+    assert "\n- _…and 1 further target._" in changes
+    assert "added `z-after`" not in changes
+
+
+def test_attribute_changes_do_not_hide_a_coverage_denominator_move() -> None:
+    def report(attribute: str, declared: int) -> dict[str, Any]:
+        return {
+            "targets": [
+                {
+                    "id": TARGET,
+                    "signals": [
+                        {
+                            "type": "span",
+                            "name": "demo.client",
+                            "emitted": ["demo.recommended", attribute],
+                            "coverage": {
+                                "recommended": {
+                                    "emitted": 1,
+                                    "declared": declared,
+                                }
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+
+    changes = _markdown.render_diff(
+        report("custom.old", 1), report("custom.new", 2)
+    )
+    assert "**+** `custom.new` **−** `custom.old`" in changes
+    assert "`recommended` coverage 1/1 → 1/2" in changes
+
+
 def test_a_coverage_move_the_attributes_explain_is_left_out() -> None:
     """Except for `required`, where a drop is the line a reviewer wants."""
 

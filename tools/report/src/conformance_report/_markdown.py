@@ -159,7 +159,17 @@ def render_diff(before: Mapping[str, Any], after: Mapping[str, Any]) -> str:
         shown: list[str] = []
         kept = 0
         for block in blocks:
-            if len(shown) + len(block) > _CHANGES:
+            remaining = _CHANGES - len(shown)
+            if len(block) > remaining:
+                # Keep the target heading with at least one change, and
+                # distinguish its omitted changes from untouched targets.
+                if remaining >= 2:
+                    shown += block[:remaining]
+                    shown.append(
+                        f"  - _…and "
+                        f"{_plural(len(block) - remaining, 'further change')}._"
+                    )
+                    kept += 1
                 break
             shown += block
             kept += 1
@@ -239,9 +249,13 @@ def _signal_diff(
     for level in sorted(set(was) | set(now)):
         before = was.get(level, {"emitted": 0, "declared": 0})
         after = now.get(level, {"emitted": 0, "declared": 0})
-        # The attribute line already explains most moves; a required one
-        # is still worth spelling out.
-        if before != after and (not attributes or level == "required"):
+        # Attribute changes can explain numerator moves, but registry
+        # denominator changes and required coverage stay explicit.
+        if before != after and (
+            not attributes
+            or level == "required"
+            or before["declared"] != after["declared"]
+        ):
             yield (
                 f"- `{signal}` `{level}` coverage "
                 f"{before['emitted']}/{before['declared']} → "
