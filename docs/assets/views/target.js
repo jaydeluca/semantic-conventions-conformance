@@ -164,11 +164,11 @@ function model(data, found) {
         kind: findingKind(finding.id),
         attribute,
         message: finding.message,
-        findings: [],
+        count: 0,
         where: new Map(),
       });
     const group = byKey.get(key);
-    group.findings.push(finding);
+    group.count++;
     const owner = signals.find((s) => belongsTo(found, finding, s.signal));
     owner?.groups.add(group);
     const label = finding.signal_name ?? finding.signal_type ?? "resource";
@@ -177,7 +177,7 @@ function model(data, found) {
   const grouped = [...byKey.values()].sort(
     (a, b) =>
       b.where.size - a.where.size ||
-      b.findings.length - a.findings.length ||
+      b.count - a.count ||
       a.id.localeCompare(b.id) ||
       (a.attribute ?? a.message).localeCompare(b.attribute ?? b.message),
   );
@@ -196,7 +196,7 @@ function model(data, found) {
             attribute: name,
             level,
             where: new Map(),
-            findings: [],
+            count: 0,
           });
         const row = rows.get(name);
         if (rank(level) < rank(row.level)) row.level = level;
@@ -207,11 +207,14 @@ function model(data, found) {
   };
   const required = missed(["required", "conditionally_required_conditional"]);
   const recommended = missed(["recommended", "recommended_conditional"]);
+  const violations = grouped.filter((g) => g.kind === "violation");
+  const absent = grouped.filter((g) => g.kind === "absent");
+  const unregistered = grouped.filter((g) => g.kind === "unregistered");
   const expected = [];
-  for (const group of grouped.filter((g) => g.kind === "absent")) {
+  for (const group of absent) {
     const row =
       required.get(group.attribute) ?? recommended.get(group.attribute);
-    if (row) row.findings.push(...group.findings);
+    if (row) row.count += group.count;
     else expected.push(group);
   }
   const sorted = (rows) =>
@@ -228,10 +231,11 @@ function model(data, found) {
     signals,
     grouped,
     required: sorted(required),
-    violations: grouped.filter((g) => g.kind === "violation"),
+    violations,
+    absent,
     expected,
     recommended: sorted(recommended),
-    unregistered: grouped.filter((g) => g.kind === "unregistered"),
+    unregistered,
   };
 }
 
@@ -326,7 +330,7 @@ function coverage(view) {
   // Coverage is a union of observations. An attribute can be present there
   // and still be missing on another observation. Reported absences are
   // violation findings, even when the fix list folds them into coverage rows.
-  const absences = grouped.filter((group) => group.kind === "absent").length;
+  const absences = view.absent.length;
   const ok = hard === 0 && violations.length === 0 && absences === 0;
   const assessed = signals.some((s) => s.signal.coverage);
   // "Fully" is kept for a run with nothing at all under Needs attention: a
@@ -363,12 +367,11 @@ function coverage(view) {
     .join(" ");
   const good = ok && assessed;
 
-  const counts = Object.fromEntries(
-    Object.keys(KINDS).map((kind) => [
-      kind,
-      grouped.filter((group) => group.kind === kind).length,
-    ]),
-  );
+  const counts = {
+    violation: violations.length,
+    absent: absences,
+    unregistered: unregistered.length,
+  };
   const levelTile = (level) => {
     const value = ratio(summary[level]);
     return tile(`${LEVEL_LABEL[level]} attributes`, [
@@ -445,7 +448,7 @@ function attention(view) {
     attribute: row.attribute,
     note: [levelDot(row.level), LEVEL_LABEL[row.level] ?? row.level],
     message: `Not emitted on ${plural(row.where.size, "signal")} that declare${row.where.size === 1 ? "s" : ""} it.`,
-    count: row.findings.length,
+    count: row.count,
     where: row.where,
   });
   const sections = [
@@ -480,7 +483,7 @@ function attention(view) {
     { class: "attention", "aria-label": "Needs attention" },
     sections.map(([heading, note, rows, limit = Infinity]) => {
       const items = rows.map((row, index) => {
-        const item = fixRow(pin, row, true);
+        const item = fixRow(pin, row);
         item.hidden = index >= limit;
         return item;
       });
@@ -517,17 +520,13 @@ function groupRow(group) {
     title: label,
     note: group.attribute ? label : el("code", { text: group.id }),
     message: group.message,
-    count: group.findings.length,
+    count: group.count,
     where: group.where,
   };
 }
 
-/**
- * @param {boolean} counted whether the row carries `data-findings`; the copies
- *   under a signal's detail do not, or the page would count them twice
- */
-function fixRow(pin, row, counted) {
-  return el("li", { "data-findings": counted ? String(row.count) : null }, [
+function fixRow(pin, row) {
+  return el("li", { "data-findings": String(row.count) }, [
     el("div", { class: "what" }, [
       row.attribute ? attributeLink(row.attribute, pin) : row.title,
       el("small", {}, row.note),
@@ -701,7 +700,7 @@ function signalDetail(s, pin) {
           "ul",
           { class: "fixes" },
           groups.map((group) =>
-            fixRow(pin, { ...groupRow(group), where: new Map() }, false),
+            fixRow(pin, { ...groupRow(group), where: new Map() }),
           ),
         ),
       ]),

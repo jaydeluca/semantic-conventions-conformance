@@ -298,14 +298,6 @@ export const FINDING_KIND = {
   genai_expected_attribute_missing: "absent",
   http_route_not_present: "absent",
   error_type_missing_on_error: "absent",
-  span_status_ok_set_by_instrumentation: "violation",
-  genai_span_name_format: "violation",
-  http_span_name_format: "violation",
-  type_mismatch: "violation",
-  unit_mismatch: "violation",
-  genai_content_schema: "violation",
-  genai_operation_name_unknown: "violation",
-  deprecated: "violation",
 };
 export const FINDING_LABEL = {
   missing_attribute: "Attribute not in the registry",

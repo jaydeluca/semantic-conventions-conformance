@@ -1,8 +1,10 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
+
 import { readFile } from "node:fs/promises";
 import { JSDOM } from "jsdom";
 import { report } from "./fixtures.js";
+
 export async function setup(t, document = report(), hash = "") {
   const html = await readFile(
     new URL("../index.html", import.meta.url),
@@ -18,6 +20,7 @@ export async function setup(t, document = report(), hash = "") {
     addEventListener: dom.window.addEventListener.bind(dom.window),
     scrollTo: t.mock.fn(),
   };
+
   for (const [name, value] of Object.entries(globals)) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, name);
     Object.defineProperty(globalThis, name, {
@@ -30,10 +33,12 @@ export async function setup(t, document = report(), hash = "") {
       else delete globalThis[name];
     });
   }
+
   t.mock.method(globalThis, "fetch", async () => ({
     ok: true,
     json: async () => document,
   }));
+
   t.after(() => dom.window.close());
   return dom.window;
 }

@@ -415,7 +415,11 @@ test("every committed target accounts for each finding once", async (t) => {
   const data = await load();
   for (const item of data.targets) {
     const page = view(data, item.id);
-    const counted = [...page.querySelectorAll("[data-findings]")]
+    const counted = [
+      ...page.querySelectorAll(
+        'section[aria-label="Needs attention"] [data-findings]',
+      ),
+    ]
       .map((node) => Number(node.dataset.findings))
       .reduce((sum, n) => sum + n, 0);
     assert.equal(counted, item.findings.length, item.id);
