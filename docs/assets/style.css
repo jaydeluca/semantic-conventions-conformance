@@ -1050,17 +1050,6 @@ details[open] > summary {
   color: var(--ink-2);
 }
 
-/* The finding kinds, wherever they are counted. */
-.k-violation {
-  color: var(--required);
-}
-.k-absent {
-  color: var(--warn);
-}
-.k-unregistered {
-  color: var(--ink-2);
-}
-
 .fix-group {
   margin: 0 0 1.3rem;
 }

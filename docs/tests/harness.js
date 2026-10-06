@@ -14,6 +14,7 @@ export async function setup(t, document = report(), hash = "") {
   const globals = {
     document: dom.window.document,
     Node: dom.window.Node,
+    CSS: dom.window.CSS,
     location: dom.window.location,
     history: dom.window.history,
     navigator: dom.window.navigator,

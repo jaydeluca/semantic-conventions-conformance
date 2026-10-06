@@ -46,10 +46,13 @@ export function go(path) {
 
 /**
  * @param {string} id a target id, whose `/`s stay path separators
- * @returns {string} the hash that opens that target's page
+ * @returns {string} the route path of that target's page
  */
-export const targetHref = (id) =>
-  `#/target/${id.split("/").map(encodeURIComponent).join("/")}`;
+export const targetPath = (id) =>
+  `/target/${id.split("/").map(encodeURIComponent).join("/")}`;
+
+/** @param {string} id @returns {string} the hash that opens that target's page */
+export const targetHref = (id) => `#${targetPath(id)}`;
 
 /**
  * Record filter state on the current route without re-rendering. Empty values

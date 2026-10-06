@@ -167,7 +167,10 @@ test("a clean run reads as conformant and has nothing to fix", async (t) => {
   ]);
   await setup(t, document);
   const page = view(await load(), document.targets[0].id);
-  assert.equal(lead(page), "Fully conformant on this run.");
+  assert.equal(
+    lead(page),
+    "Meets every required attribute and breaks no rule.",
+  );
   assert.equal(page.querySelector(".verdict-mark").textContent, "✓");
   assert.equal(
     page.querySelector('section[aria-label="Needs attention"]'),
@@ -226,6 +229,37 @@ for (const id of [
     );
   });
 }
+
+test("an absence folded into a recommended row still fails the verdict", async (t) => {
+  const document = report([
+    target({
+      signals: [
+        {
+          type: "metric",
+          name: "db.duration",
+          emitted: ["db.system"],
+          coverage,
+        },
+      ],
+      findings: [
+        {
+          id: "recommended_attribute_not_present",
+          message: "Recommended attribute 'db.namespace' is not present.",
+          context: { attribute_key: "db.namespace" },
+          signal_type: "metric",
+          signal_name: "db.duration",
+        },
+      ],
+    }),
+  ]);
+  await setup(t, document);
+  const page = view(await load(), document.targets[0].id);
+  assert.equal(lead(page), "1 absence finding reported.");
+  assert.equal(page.querySelector(".verdict-mark").textContent, "!");
+  const [row] = attention(page, "Recommended attributes not emitted");
+  assert.equal(row.dataset.findings, "1");
+  assert.equal(attention(page, "Expected, not emitted").length, 0);
+});
 
 for (const unknown of [false, true]) {
   test(`coverage is unassessed with ${unknown ? "only undeclared" : "no"} signals`, async (t) => {
@@ -304,10 +338,8 @@ test("a required miss is rolled up at its strictest level", async (t) => {
   ].attributes["db.system"] = "conditionally_required_conditional";
   await setup(t, document);
   const page = view(await load(), document.targets[0].id);
-  assert.equal(
-    lead(page),
-    "1 required attribute not emitted, 1 absence finding reported.",
-  );
+  // The absence is the same miss as the required row, so it isn't counted twice.
+  assert.equal(lead(page), "1 required attribute not emitted.");
   const [row, ...rest] = attention(page, "Required attributes not emitted");
   assert.equal(rest.length, 0);
   assert.equal(row.querySelector(".what a").textContent, "db.system");

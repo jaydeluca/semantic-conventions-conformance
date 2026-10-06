@@ -283,43 +283,6 @@ export function fullLabel(target) {
     .join(" · ");
 }
 
-/**
- * What each finding id says, for grouping on the target page. Nothing upstream
- * classifies ids, and the runner's advice policies add new ones, so this is
- * not expected to be complete: an id missing here is shown as breaking the
- * convention, which is the one reading that does not hide it.
- */
-export const FINDING_KIND = {
-  missing_attribute: "unregistered",
-  missing_metric: "unregistered",
-  missing_event: "unregistered",
-  required_attribute_not_present: "absent",
-  recommended_attribute_not_present: "absent",
-  genai_expected_attribute_missing: "absent",
-  http_route_not_present: "absent",
-  error_type_missing_on_error: "absent",
-};
-export const FINDING_LABEL = {
-  missing_attribute: "Attribute not in the registry",
-  missing_metric: "Metric not in the registry",
-  missing_event: "Event not in the registry",
-  required_attribute_not_present: "Required attribute not emitted",
-  recommended_attribute_not_present: "Recommended attribute not emitted",
-  genai_expected_attribute_missing: "Expected GenAI attribute not emitted",
-  http_route_not_present: "HTTP route not emitted",
-  error_type_missing_on_error: "Error type not emitted on error",
-  span_status_ok_set_by_instrumentation: "Span status set to OK",
-  genai_span_name_format: "GenAI span name format",
-  http_span_name_format: "HTTP span name format",
-  type_mismatch: "Attribute type mismatch",
-  unit_mismatch: "Metric unit mismatch",
-  genai_content_schema: "GenAI content schema",
-  genai_operation_name_unknown: "Unknown GenAI operation",
-  deprecated: "Deprecated convention",
-};
-/** @param {string} id */
-export const findingKind = (id) =>
-  Object.hasOwn(FINDING_KIND, id) ? FINDING_KIND[id] : "violation";
 /** @param {Tally} tally @returns {number|null} */
 export const ratio = (tally) =>
   tally?.declared ? tally.emitted / tally.declared : null;

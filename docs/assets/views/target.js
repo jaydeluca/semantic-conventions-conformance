@@ -4,8 +4,6 @@
 import {
   LEVELS,
   LEVEL_LABEL,
-  FINDING_LABEL,
-  findingKind,
   fullLabel,
   attributeUrl,
   levelColor,
@@ -19,20 +17,49 @@ import {
   palette,
   trackBand,
 } from "../ui.js";
-import { go, targetHref } from "../route.js";
+import { go, targetHref, targetPath } from "../route.js";
 
 const REPO =
   "https://github.com/open-telemetry/semantic-conventions-conformance";
-// Every committed finding is a weaver `violation`; these split them by what
-// they say, so the first bucket cannot reuse that word.
 const KINDS = {
   violation: "Breaks the convention",
   absent: "Expected, not emitted",
-  unregistered: "Emitted, not in the registry",
+  unregistered: "Not in the registry",
 };
+// Nothing upstream classifies finding ids and new ones keep appearing, so an
+// unknown id is treated as a violation: the one reading that does not hide it.
+const FINDING_KIND = {
+  missing_attribute: "unregistered",
+  missing_metric: "unregistered",
+  missing_event: "unregistered",
+  required_attribute_not_present: "absent",
+  recommended_attribute_not_present: "absent",
+  genai_expected_attribute_missing: "absent",
+  http_route_not_present: "absent",
+  error_type_missing_on_error: "absent",
+};
+const FINDING_LABEL = {
+  missing_attribute: "Attribute not in the registry",
+  missing_metric: "Metric not in the registry",
+  missing_event: "Event not in the registry",
+  required_attribute_not_present: "Required attribute not emitted",
+  recommended_attribute_not_present: "Recommended attribute not emitted",
+  genai_expected_attribute_missing: "Expected GenAI attribute not emitted",
+  http_route_not_present: "HTTP route not emitted",
+  error_type_missing_on_error: "Error type not emitted on error",
+  span_status_ok_set_by_instrumentation: "Span status set to OK",
+  genai_span_name_format: "GenAI span name format",
+  http_span_name_format: "HTTP span name format",
+  type_mismatch: "Attribute type mismatch",
+  unit_mismatch: "Metric unit mismatch",
+  genai_content_schema: "GenAI content schema",
+  genai_operation_name_unknown: "Unknown GenAI operation",
+  deprecated: "Deprecated convention",
+};
+const findingKind = (id) =>
+  Object.hasOwn(FINDING_KIND, id) ? FINDING_KIND[id] : "violation";
 const TYPES = ["span", "metric", "event"];
-// The two lists that run to dozens on a GenAI target, and that are rarely
-// what a reader came for: past this many rows the rest wait behind a button.
+// Rows shown before a "Show all" button, for the lists that run long.
 const FOLD = { recommended: 6, unregistered: 5 };
 // Past this many signals a row's chips are a wall; they fold into a count.
 const WHERE_FOLD = 5;
@@ -75,7 +102,7 @@ export default function target(data, id) {
           a.group.localeCompare(b.group) || a.name.localeCompare(b.name),
       ),
     value: id,
-    onPick: (value) => go(targetHref(value).slice(1)),
+    onPick: (value) => go(targetPath(value)),
   });
   const controls = el("div", { class: "controls" }, [
     el("div", { class: "controls-row" }, [
@@ -92,19 +119,19 @@ export default function target(data, id) {
   const view = model(data, found);
   const root = el("div", { class: "target-detail" }, [
     controls,
-    header(data, found),
+    header(data, view),
     coverage(view),
     attention(view),
     signalTable(view),
     entities(data, found),
   ]);
-  // A where-chip is a button rather than a fragment link: fragment-only
-  // anchors belong to the router, and this jump has to stay inside the view.
+  // Where-chips are buttons, not fragment links, because the router owns the
+  // hash.
   root.addEventListener("click", (event) => {
     const chip = event.target.closest("button[data-opens]");
     if (!chip) return;
-    const row = [...root.querySelectorAll("tr[data-signal]")].find(
-      (node) => node.dataset.signal === chip.dataset.opens,
+    const row = root.querySelector(
+      `tr[data-signal="${CSS.escape(chip.dataset.opens)}"]`,
     );
     if (!row) return;
     expand(row, true);
@@ -115,17 +142,14 @@ export default function target(data, id) {
 }
 
 /**
- * Everything the page draws, derived once so the verdict, the fix list and the
- * table cannot disagree about a count.
+ * Everything the page draws, derived once so the sections agree on counts.
  *
- * Weaver repeats a finding once per signal, and once per span on the larger
- * runs, so findings are grouped by rule and attribute (or by message, for rules
- * that name none). The fix list then folds absences weaver reported into the
- * coverage rows for the same attribute rather than listing them twice; every
- * finding still lands in exactly one row, and each row says how many.
+ * Weaver repeats a finding per signal (and per span), so findings are grouped
+ * by rule and attribute, or by message when there is no attribute. An absence
+ * weaver reported folds into the coverage row for the same attribute, so each
+ * finding lands in exactly one row.
  */
 function model(data, found) {
-  const pin = data.report.domains[found.runner];
   const signals = found.signals.map((signal) => {
     const key = signalKey(signal);
     const declaration = data.signals.get(key);
@@ -154,6 +178,39 @@ function model(data, found) {
     };
   });
 
+  const grouped = groupFindings(found, signals);
+  const byKind = { violation: [], absent: [], unregistered: [] };
+  for (const group of grouped) byKind[group.kind].push(group);
+  const required = missed(signals, [
+    "required",
+    "conditionally_required_conditional",
+  ]);
+  const recommended = missed(signals, [
+    "recommended",
+    "recommended_conditional",
+  ]);
+  const expected = [];
+  for (const group of byKind.absent) {
+    group.row = [...required, ...recommended].find(
+      (row) => row.attribute === group.attribute,
+    );
+    if (group.row) group.row.count += group.count;
+    else expected.push(group);
+  }
+
+  return {
+    found,
+    pin: data.report.domains[found.runner],
+    signals,
+    grouped,
+    byKind,
+    required,
+    recommended,
+    expected,
+  };
+}
+
+function groupFindings(found, signals) {
   const byKey = new Map();
   for (const finding of found.findings) {
     const attribute = finding.context?.attribute_key ?? null;
@@ -172,71 +229,41 @@ function model(data, found) {
     const owner = signals.find((s) => belongsTo(found, finding, s.signal));
     owner?.groups.add(group);
     const label = finding.signal_name ?? finding.signal_type ?? "resource";
-    if (!group.where.get(label)) group.where.set(label, owner?.key ?? null);
+    group.where.set(label, group.where.get(label) ?? owner?.key ?? null);
   }
-  const grouped = [...byKey.values()].sort(
+  return [...byKey.values()].sort(
     (a, b) =>
       b.where.size - a.where.size ||
       b.count - a.count ||
       a.id.localeCompare(b.id) ||
       (a.attribute ?? a.message).localeCompare(b.attribute ?? b.message),
   );
+}
 
-  // Rolled up per attribute, and the strictest level wins: one attribute can
-  // be required on one metric and only conditionally required on its sibling,
-  // and letting the first signal decide would make the required miss vanish.
-  const missed = (levels) => {
-    const rows = new Map();
-    for (const s of signals) {
-      for (const name of s.missing) {
-        const level = s.levels[name];
-        if (!levels.includes(level)) continue;
-        if (!rows.has(name))
-          rows.set(name, {
-            attribute: name,
-            level,
-            where: new Map(),
-            count: 0,
-          });
-        const row = rows.get(name);
-        if (rank(level) < rank(row.level)) row.level = level;
-        row.where.set(s.signal.name, s.key);
-      }
+/**
+ * Declared attributes no signal emitted at the given levels, one row per
+ * attribute. The strictest level wins: an attribute can be required on one
+ * metric and only conditionally required on its sibling.
+ */
+function missed(signals, levels) {
+  const rows = new Map();
+  for (const s of signals) {
+    for (const name of s.missing) {
+      const level = s.levels[name];
+      if (!levels.includes(level)) continue;
+      if (!rows.has(name))
+        rows.set(name, { attribute: name, level, where: new Map(), count: 0 });
+      const row = rows.get(name);
+      if (rank(level) < rank(row.level)) row.level = level;
+      row.where.set(s.signal.name, s.key);
     }
-    return rows;
-  };
-  const required = missed(["required", "conditionally_required_conditional"]);
-  const recommended = missed(["recommended", "recommended_conditional"]);
-  const violations = grouped.filter((g) => g.kind === "violation");
-  const absent = grouped.filter((g) => g.kind === "absent");
-  const unregistered = grouped.filter((g) => g.kind === "unregistered");
-  const expected = [];
-  for (const group of absent) {
-    const row =
-      required.get(group.attribute) ?? recommended.get(group.attribute);
-    if (row) row.count += group.count;
-    else expected.push(group);
   }
-  const sorted = (rows) =>
-    [...rows.values()].sort(
-      (a, b) =>
-        rank(a.level) - rank(b.level) ||
-        b.where.size - a.where.size ||
-        a.attribute.localeCompare(b.attribute),
-    );
-
-  return {
-    found,
-    pin,
-    signals,
-    grouped,
-    required: sorted(required),
-    violations,
-    absent,
-    expected,
-    recommended: sorted(recommended),
-    unregistered,
-  };
+  return [...rows.values()].sort(
+    (a, b) =>
+      rank(a.level) - rank(b.level) ||
+      b.where.size - a.where.size ||
+      a.attribute.localeCompare(b.attribute),
+  );
 }
 
 /**
@@ -258,8 +285,7 @@ function belongsTo(found, finding, signal) {
   );
 }
 
-function header(data, found) {
-  const pin = data.report.domains[found.runner];
+function header(data, { found, pin }) {
   const peers = new Set(
     data.targets.filter(
       (target) =>
@@ -267,8 +293,7 @@ function header(data, found) {
         target.instrumented_library === found.instrumented_library,
     ),
   );
-  // The signal most of the peers emit, so the comparison opens on a page
-  // where they can all be seen side by side.
+  // The signal most peers emit, so the comparison shows them side by side.
   const common = [...data.signals.values()]
     .map((signal) => ({
       signal,
@@ -282,15 +307,8 @@ function header(data, found) {
     el("span", {}, [el("b", { text: label }), value]);
 
   return el("header", { class: "target-head" }, [
-    el("p", { class: "crumbs" }, [
-      `${found.domain} / ${found.language}`,
-      found.side && el("span", { class: "badge", text: found.side }),
-    ]),
-    el("h2", {
-      text: [found.instrumented_library, found.label, found.backend, found.side]
-        .filter(Boolean)
-        .join(" · "),
-    }),
+    el("p", { class: "crumbs", text: `${found.domain} / ${found.language}` }),
+    el("h2", { text: fullLabel(found) }),
     el("p", { class: "meta" }, [
       el("span", { class: "mono", text: found.instrumentation_library }),
       pin &&
@@ -321,36 +339,28 @@ function header(data, found) {
 
 /** The verdict sentence, and the four numbers it is made of. */
 function coverage(view) {
-  const { found, signals, grouped, violations, recommended, unregistered } =
-    view;
+  const { found, signals, grouped, byKind } = view;
   const { summary } = found;
   // A conditional miss may be legitimately absent for the scenario, so only a
   // plain required one counts against the run.
   const hard = view.required.filter((row) => row.level === "required").length;
-  // Coverage is a union of observations. An attribute can be present there
-  // and still be missing on another observation. Reported absences are
-  // violation findings, even when the fix list folds them into coverage rows.
-  const absences = view.absent.length;
-  const ok = hard === 0 && violations.length === 0 && absences === 0;
+  // Coverage is a union of observations, so a reported absence fails the run
+  // even when coverage looks complete. One folded into a required row is
+  // already counted in `hard`.
+  const absences = byKind.absent.filter(
+    (group) => group.row?.level !== "required",
+  ).length;
+  const violations = byKind.violation.length;
+  const unregistered = byKind.unregistered.length;
+  const ok = hard === 0 && violations === 0 && byKind.absent.length === 0;
   const assessed = signals.some((s) => s.signal.coverage);
-  // "Fully" is kept for a run with nothing at all under Needs attention: a
-  // conditional miss does not fail the run, but calling
-  // it fully conformant right above a list of them reads as a contradiction.
-  const leftover =
-    view.required.length ||
-    view.expected.length ||
-    recommended.length ||
-    unregistered.length;
   const lead = !assessed
     ? "No coverage assessed: nothing here matched a registry declaration."
     : ok
-      ? leftover
-        ? "Meets every required attribute and breaks no rule."
-        : "Fully conformant on this run."
+      ? "Meets every required attribute and breaks no rule."
       : [
           hard && `${plural(hard, "required attribute")} not emitted`,
-          violations.length &&
-            `${plural(violations.length, "convention rule")} broken`,
+          violations && `${plural(violations, "convention rule")} broken`,
           absences && `${plural(absences, "absence finding")} reported`,
         ]
           .filter(Boolean)
@@ -360,18 +370,13 @@ function coverage(view) {
       `${summary.required.emitted}/${summary.required.declared} required and ` +
         `${summary.recommended.emitted}/${summary.recommended.declared} recommended ` +
         `attributes emitted across ${plural(signals.length, "signal")}.`,
-    unregistered.length &&
-      `${plural(unregistered.length, "name")} emitted that the registry doesn't define.`,
+    unregistered &&
+      `${plural(unregistered, "name")} emitted that the registry doesn't define.`,
   ]
     .filter(Boolean)
     .join(" ");
   const good = ok && assessed;
 
-  const counts = {
-    violation: violations.length,
-    absent: absences,
-    unregistered: unregistered.length,
-  };
   const levelTile = (level) => {
     const value = ratio(summary[level]);
     return tile(`${LEVEL_LABEL[level]} attributes`, [
@@ -408,16 +413,6 @@ function coverage(view) {
             text: ` from ${plural(found.findings.length, "report")}`,
           }),
         ]),
-        el(
-          "p",
-          { class: "tile-sub" },
-          Object.entries(KINDS).map(([kind, label]) =>
-            el("span", {}, [
-              el("b", { class: `k-${kind}`, text: String(counts[kind]) }),
-              ` ${label.toLowerCase()}`,
-            ]),
-          ),
-        ),
       ]),
       tile("Signals emitted", [
         el("span", { class: "tile-big", text: String(signals.length) }),
@@ -457,7 +452,7 @@ function attention(view) {
       "Declared required or conditionally required on a signal this run emitted. Conditional ones may be legitimately absent for the scenario.",
       view.required.map(missRow),
     ],
-    [KINDS.violation, null, view.violations.map(groupRow)],
+    [KINDS.violation, null, view.byKind.violation.map(groupRow)],
     [
       KINDS.absent,
       "Absences weaver's advice policies reported that aren't already listed above.",
@@ -470,9 +465,9 @@ function attention(view) {
       FOLD.recommended,
     ],
     [
-      "Not in the registry",
+      KINDS.unregistered,
       "Names this run emitted that the pinned registry doesn't define. Often vendor or framework extras.",
-      view.unregistered.map(groupRow),
+      view.byKind.unregistered.map(groupRow),
       FOLD.unregistered,
     ],
   ].filter(([, , rows]) => rows.length > 0);
@@ -626,7 +621,7 @@ function signalTable(view) {
       "Signals",
       el("span", {
         class: "n",
-        text: "worst first · open a row for its attributes",
+        text: "click a row for its attributes",
       }),
     ]),
     el("div", { class: "table-wrap" }, [
@@ -642,8 +637,11 @@ function signalTable(view) {
               "Recommended",
               "All levels",
               "Findings",
-            ].map((label, index) =>
-              el("th", { class: index === 5 ? "num" : null, text: label }),
+            ].map((label) =>
+              el("th", {
+                class: label === "Findings" ? "num" : null,
+                text: label,
+              }),
             ),
           ),
         ]),
@@ -690,7 +688,7 @@ function signalDetail(s, pin) {
             text: "This signal has no declaration in the pinned registry. There is no denominator; its emitted attributes are left uncounted.",
           }),
           el("div", { class: "attr-split" }, [
-            column("Emitted", "extra", s.signal.emitted.slice().sort()),
+            column("Emitted", "undeclared", s.signal.emitted.slice().sort()),
           ]),
         ],
     groups.length > 0 &&
@@ -736,14 +734,9 @@ function chips(names) {
 }
 
 /**
- * The resource entities the run carried, named rather than counted.
- *
- * A count of the identifying attributes says nothing: the reduction only
- * records an entity when *every* declared identifying attribute was emitted
- * (see `_entities` in the runner's `_semconv`), so that number is a constant
- * per entity name. What varies is the descriptive attributes, and their
- * denominator is the registry's declaration — already in the report, and read
- * by nothing until now.
+ * The resource entities the run carried. An entity is only recorded when all
+ * its identifying attributes were emitted (`_entities` in the runner's
+ * `_semconv`), so only the descriptive attributes are scored.
  */
 function entities(data, found) {
   const names = Object.keys(found.entities ?? {}).sort();
