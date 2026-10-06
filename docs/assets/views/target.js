@@ -323,17 +323,22 @@ function coverage(view) {
   // A conditional miss may be legitimately absent for the scenario, so only a
   // plain required one counts against the run.
   const hard = view.required.filter((row) => row.level === "required").length;
-  const ok = hard === 0 && violations.length === 0;
+  // Coverage is a union of observations. An attribute can be present there
+  // and still be missing on another observation. Reported absences are
+  // violation findings, even when the fix list folds them into coverage rows.
+  const absences = grouped.filter((group) => group.kind === "absent").length;
+  const ok = hard === 0 && violations.length === 0 && absences === 0;
+  const assessed = signals.some((s) => s.signal.coverage);
   // "Fully" is kept for a run with nothing at all under Needs attention: a
-  // conditional miss or a reported absence does not fail the run, but calling
+  // conditional miss does not fail the run, but calling
   // it fully conformant right above a list of them reads as a contradiction.
   const leftover =
     view.required.length ||
     view.expected.length ||
     recommended.length ||
     unregistered.length;
-  const lead = !signals.length
-    ? "Nothing here matched the registry."
+  const lead = !assessed
+    ? "No coverage assessed: nothing here matched a registry declaration."
     : ok
       ? leftover
         ? "Meets every required attribute and breaks no rule."
@@ -342,6 +347,7 @@ function coverage(view) {
           hard && `${plural(hard, "required attribute")} not emitted`,
           violations.length &&
             `${plural(violations.length, "convention rule")} broken`,
+          absences && `${plural(absences, "absence finding")} reported`,
         ]
           .filter(Boolean)
           .join(", ") + ".";
@@ -355,7 +361,7 @@ function coverage(view) {
   ]
     .filter(Boolean)
     .join(" ");
-  const good = ok && signals.length > 0;
+  const good = ok && assessed;
 
   const counts = Object.fromEntries(
     Object.keys(KINDS).map((kind) => [

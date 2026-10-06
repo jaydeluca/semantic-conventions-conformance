@@ -115,7 +115,10 @@ test("header, verdict, section order and comparison links", async (t) => {
     ),
     ["Coverage", "Needs attention", "Signals", "Resource entities"],
   );
-  assert.equal(lead(page), "2 convention rules broken.");
+  assert.equal(
+    lead(page),
+    "2 convention rules broken, 1 absence finding reported.",
+  );
   assert.equal(
     page.querySelector(".verdict-sub").textContent,
     "1/1 required and 0/1 recommended attributes emitted across 4 signals. 1 name emitted that the registry doesn't define.",
@@ -173,6 +176,89 @@ test("a clean run reads as conformant and has nothing to fix", async (t) => {
   assert.equal(page.querySelectorAll(".compare").length, 1);
 });
 
+for (const id of [
+  "required_attribute_not_present",
+  "error_type_missing_on_error",
+]) {
+  test(`${id} fails the verdict even with complete coverage`, async (t) => {
+    const document = report([
+      target({
+        signals: [
+          {
+            type: "metric",
+            name: "db.duration",
+            emitted: ["db.system", "db.namespace"],
+            coverage: {
+              required: { emitted: 1, declared: 1 },
+              recommended: { emitted: 1, declared: 1 },
+            },
+          },
+        ],
+        summary: {
+          required: { emitted: 1, declared: 1 },
+          recommended: { emitted: 1, declared: 1 },
+          findings: 1,
+        },
+        findings: [
+          {
+            id,
+            message: "An attribute was missing on another observation.",
+            context: {
+              attribute_key:
+                id === "required_attribute_not_present"
+                  ? "db.system"
+                  : "error.type",
+            },
+            signal_type: "metric",
+            signal_name: "db.duration",
+          },
+        ],
+      }),
+    ]);
+    await setup(t, document);
+    const page = view(await load(), document.targets[0].id);
+    assert.equal(lead(page), "1 absence finding reported.");
+    assert.equal(page.querySelector(".verdict-mark").textContent, "!");
+    assert.equal(attention(page, "Expected, not emitted").length, 1);
+    assert.match(
+      page.querySelector(".verdict-sub").textContent,
+      /1\/1 required/,
+    );
+  });
+}
+
+for (const unknown of [false, true]) {
+  test(`coverage is unassessed with ${unknown ? "only undeclared" : "no"} signals`, async (t) => {
+    const document = report([
+      target({
+        signals: unknown
+          ? [
+              {
+                type: "metric",
+                name: "custom.metric",
+                emitted: ["custom.attr"],
+                declared: null,
+              },
+            ]
+          : [],
+        summary: {
+          required: { emitted: 0, declared: 0 },
+          recommended: { emitted: 0, declared: 0 },
+          findings: 0,
+        },
+      }),
+    ]);
+    await setup(t, document);
+    const page = view(await load(), document.targets[0].id);
+    assert.equal(
+      lead(page),
+      "No coverage assessed: nothing here matched a registry declaration.",
+    );
+    assert.equal(page.querySelector(".verdict-mark").textContent, "!");
+    assert.equal(page.querySelectorAll(".compare").length, unknown ? 1 : 0);
+  });
+}
+
 test("a required miss is rolled up at its strictest level", async (t) => {
   const document = report([
     target({
@@ -218,7 +304,10 @@ test("a required miss is rolled up at its strictest level", async (t) => {
   ].attributes["db.system"] = "conditionally_required_conditional";
   await setup(t, document);
   const page = view(await load(), document.targets[0].id);
-  assert.equal(lead(page), "1 required attribute not emitted.");
+  assert.equal(
+    lead(page),
+    "1 required attribute not emitted, 1 absence finding reported.",
+  );
   const [row, ...rest] = attention(page, "Required attributes not emitted");
   assert.equal(rest.length, 0);
   assert.equal(row.querySelector(".what a").textContent, "db.system");
