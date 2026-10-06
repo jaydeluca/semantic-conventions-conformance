@@ -24,6 +24,9 @@
 
   --good: #1a7f5a;
   --miss: #e7e9ee;
+  /* The "expected, not emitted" finding kind: between a broken rule and a
+     name the registry lacks, so neither the level red nor the plain ink. */
+  --warn: #b5730f;
 
   /* Languages. A separate scale from the requirement levels on purpose: it
      only ever appears on labels — a band, a pill, a group heading — and never
@@ -60,6 +63,7 @@
 
     --good: #4fc294;
     --miss: #262b33;
+    --warn: #e0a95a;
 
     --lang-1: #52c3d1;
     --lang-2: #e0a95a;
@@ -892,140 +896,6 @@ td.num {
 .levels > span {
   display: block;
 }
-.crumbs {
-  font-size: 0.82rem;
-  color: var(--ink-3);
-  margin: 0 0 0.35rem;
-}
-.crumbs a {
-  color: var(--ink-2);
-}
-
-.facts {
-  display: grid;
-  gap: 0.1rem 0.9rem;
-  margin: 1rem 0 1.6rem;
-  grid-template-columns: max-content 1fr;
-  font-size: 0.87rem;
-  align-items: baseline;
-}
-.facts dt {
-  color: var(--ink-2);
-}
-.facts dd {
-  margin: 0;
-}
-
-.entity {
-  display: grid;
-  gap: 0.1rem 0.9rem;
-  margin: 0 0 0.8rem;
-  grid-template-columns: max-content 1fr;
-  font-size: 0.87rem;
-  align-items: baseline;
-}
-.entity:last-child {
-  margin-bottom: 0;
-}
-.entity dt {
-  grid-column: 1 / -1;
-  margin-bottom: 0.15rem;
-}
-.entity dd {
-  margin: 0;
-  display: contents;
-}
-.entity-role {
-  color: var(--ink-3);
-  font-size: 0.78rem;
-}
-.entity .attrs {
-  margin: 0;
-}
-
-.card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  padding: 0.9rem 1rem;
-  margin: 0 0 0.8rem;
-}
-.card > h4 {
-  margin: 0 0 0.55rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.card .kind {
-  font-weight: 400;
-  color: var(--ink-3);
-  font-size: 0.78rem;
-}
-
-.attrs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin: 0.4rem 0 0;
-}
-.attrs :is(code, a) {
-  padding: 0.1rem 0.38rem;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  background: var(--surface-2);
-  font-size: 0.78rem;
-}
-.attrs a {
-  text-decoration: none;
-  color: var(--ink);
-}
-.attrs a:hover {
-  color: var(--accent);
-  border-color: var(--line-strong);
-}
-.attrs a i {
-  font-style: normal;
-  color: var(--ink-3);
-}
-.attrs a i::before {
-  content: " · ";
-}
-.attrs.emitted code {
-  border-color: color-mix(in srgb, var(--good) 40%, transparent);
-}
-.attrs.missing code {
-  color: var(--ink-2);
-  border-style: dashed;
-  border-color: var(--line-strong);
-}
-.subhead {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-2);
-  margin: 0.7rem 0 0;
-}
-.finding {
-  border-left: 3px solid var(--required);
-  padding: 0.35rem 0 0.35rem 0.7rem;
-  margin: 0.5rem 0;
-  font-size: 0.86rem;
-}
-.finding .msg {
-  display: block;
-}
-.finding .where {
-  color: var(--ink-3);
-  font-size: 0.8rem;
-}
-.finding-id {
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  color: var(--required);
-}
 
 details > summary {
   cursor: pointer;
@@ -1043,37 +913,398 @@ details[open] > summary {
   color: var(--accent);
   text-decoration: underline;
 }
-.attr-level {
-  font-size: 0.8rem;
-  margin: 0.8rem 0 0.2rem;
-  color: var(--ink-2);
-}
-.attrs .emitted {
-  border-color: var(--good);
-}
-.attrs .missing,
-.attrs.missing code {
-  text-decoration: line-through;
-  color: var(--ink-2);
-  border-style: dashed;
-}
+
+/* --- target detail ------------------------------------------------------- */
+
 .target-detail {
   overflow-wrap: anywhere;
 }
-.target-detail .card {
+.target-detail > section {
+  margin: 0 0 1.8rem;
+}
+.target-detail h3 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.98rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.target-detail h3 .n {
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.target-detail .note {
+  margin-bottom: 0.8rem;
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  margin: 0 0 0.35rem;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  margin: 0.3rem 0 1.4rem;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.meta > * {
+  min-width: 0;
+}
+.meta b {
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-right: 0.3rem;
+}
+
+/* The verdict is the sentence a reader came for, so it leads; the tiles are
+   the numbers it was made from. */
+.verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  margin: 0 0 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.verdict p {
+  margin: 0;
+}
+.verdict-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--bg);
+  background: var(--required);
+}
+.verdict-mark.good {
+  background: var(--good);
+}
+.verdict-lead {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.verdict .verdict-sub {
+  margin-top: 0.2rem;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.7rem;
+}
+.tile {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.tile-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+}
+.tile-big {
+  font-size: 1.55rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.tile-big small {
+  font-size: 0.9rem;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+.tile-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.7rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+/* The finding kinds, wherever they are counted. */
+.k-violation {
+  color: var(--required);
+}
+.k-absent {
+  color: var(--warn);
+}
+.k-unregistered {
+  color: var(--ink-2);
+}
+
+.fix-group {
+  margin: 0 0 1.3rem;
+}
+.section-note {
+  max-width: 80ch;
+  margin: -0.2rem 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.fixes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.fixes > li {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.3rem 1.2rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+.fixes > li:last-child {
+  border-bottom: 0;
+}
+.fixes .what {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.fixes .what a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.fixes .what a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.fixes .what small {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.74rem;
+  color: var(--ink-3);
+}
+.fixes .why {
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.reported {
+  color: var(--ink-3);
+}
+.where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+.where :is(code, button) {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+/* Only a chip that names a signal in the table below is a control. */
+.where button {
+  cursor: pointer;
+  color: var(--accent);
+  border-color: var(--line-strong);
+}
+.where button:hover {
+  border-color: var(--accent);
+}
+.where-fold > summary {
+  font-size: 0.78rem;
+  padding: 0;
+  margin-top: 0.3rem;
+}
+.more-rows {
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+}
+.more-rows:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+/* The tables scroll inside their own frame, so a phone keeps the page still
+   and only the table moves. */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.signal-table td.kind {
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.signal-table .levels {
+  min-width: 6rem;
+}
+.signal-table tr[data-signal] {
   scroll-margin-top: calc(var(--controls-h, 5rem) + 1rem);
 }
-.compare {
-  margin-left: auto;
+.row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
   font-size: 0.8rem;
-  font-weight: 400;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  background: none;
+  border: 0;
 }
-@media (max-width: 640px) {
-  .facts {
-    grid-template-columns: 1fr;
-    gap: 0;
+.row-toggle::before {
+  content: "▸";
+  font-family: var(--sans);
+  color: var(--ink-3);
+  transition: transform 0.15s;
+}
+.row-toggle[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+.count-badge {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.02rem 0.4rem;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.76rem;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.count-badge.hot {
+  background: color-mix(in srgb, var(--required) 14%, var(--surface));
+  color: var(--required);
+  font-weight: 600;
+}
+tbody tr.signal-detail,
+tbody tr.signal-detail:hover {
+  background: var(--surface-2);
+}
+tr.signal-detail > td {
+  padding: 0.8rem 1rem 1rem;
+}
+.attr-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem 1.6rem;
+}
+.attr-column h4,
+.signal-findings h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.attr-column .ver {
+  margin: 0;
+}
+.attr-list {
+  display: grid;
+  gap: 0.12rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+}
+.attr-list li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.attr-list a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.attr-list a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.attr-list.missing :is(a, code) {
+  color: var(--ink-2);
+}
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.35rem;
+  border-radius: 2px;
+}
+.signal-findings {
+  margin-top: 1rem;
+}
+.compare {
+  display: inline-block;
+  margin-top: 0.8rem;
+  font-size: 0.8rem;
+}
+
+.attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.attrs code {
+  padding: 0.1rem 0.38rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-size: 0.78rem;
+}
+.entity-table td {
+  vertical-align: top;
+}
+
+@media (max-width: 720px) {
+  .fixes > li {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .facts dt {
-    margin-top: 0.5rem;
+  .verdict {
+    padding: 0.85rem 0.9rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-toggle::before {
+    transition: none;
   }
 }

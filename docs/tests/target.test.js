@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { findingKind, load } from "../assets/data.js";
+import { load } from "../assets/data.js";
 import { split } from "../assets/route.js";
 import view, { title } from "../assets/views/target.js";
 import signals from "../assets/views/signals.js";
@@ -81,49 +81,51 @@ function detailed() {
   return document;
 }
 
-test("facts, typed panels, coverage attributes, entities and comparison links", async (t) => {
+// The rows of one Needs attention subsection, by its heading.
+function attention(page, heading) {
+  const group = [
+    ...page.querySelectorAll(
+      'section[aria-label="Needs attention"] .fix-group',
+    ),
+  ].find((node) => node.querySelector("h3").firstChild.textContent === heading);
+  return group ? [...group.querySelectorAll(".fixes > li")] : [];
+}
+const lead = (page) => page.querySelector(".verdict-lead").textContent;
+
+test("header, verdict, section order and comparison links", async (t) => {
   const document = detailed();
   await setup(t, document);
   const data = await load();
   const page = view(data, document.targets[0].id);
+  const meta = page.querySelector(".meta");
   assert.ok(
-    page.querySelector(
+    meta.querySelector(
       'a[href="https://github.com/open-telemetry/demo/tree/v1/model"]',
     ),
   );
   assert.ok(
-    page.querySelector(
+    meta.querySelector(
       `a[href="https://github.com/open-telemetry/semantic-conventions-conformance/tree/main/${document.targets[0].path}"]`,
     ),
   );
-  assert.match(page.textContent, /query/);
+  assert.match(meta.textContent, /Scenarios.*query/);
   assert.deepEqual(
     [...page.querySelectorAll(":scope > section[aria-label]")].map((node) =>
       node.getAttribute("aria-label"),
     ),
-    ["Coverage", "Spans", "Metrics", "Events", "Findings"],
+    ["Coverage", "Needs attention", "Signals", "Resource entities"],
   );
-  const metric = page.querySelector('section[aria-label="Metrics"]');
+  assert.equal(lead(page), "2 convention rules broken.");
   assert.equal(
-    metric.querySelector('[data-level="required"] .emitted').textContent,
-    "db.system",
+    page.querySelector(".verdict-sub").textContent,
+    "1/1 required and 0/1 recommended attributes emitted across 4 signals. 1 name emitted that the registry doesn't define.",
   );
-  assert.equal(
-    metric.querySelector('[data-level="recommended"] .missing').textContent,
-    "db.namespace",
+  assert.equal(page.querySelector(".verdict-mark").textContent, "!");
+  assert.match(
+    page.querySelector('section[aria-label="Resource entities"]').textContent,
+    /service\.version/,
   );
-  assert.equal(
-    metric.querySelector(".unregistered-attributes code").textContent,
-    "extra",
-  );
-  assert.match(metric.textContent, /no declaration/);
-  assert.match(page.querySelector(".entity").textContent, /service.version/);
-  const link = split(metric.querySelector(".compare").getAttribute("href"));
-  assert.equal(link.path, "/signals/metric:db.duration");
-  assert.ok(
-    signals(data, link.path.slice("/signals/".length)).querySelector("table"),
-  );
-  const same = [...page.querySelectorAll(".facts a")].find((a) =>
+  const same = [...meta.querySelectorAll("a")].find((a) =>
     a.textContent.startsWith("Compare all"),
   );
   const route = split(same.getAttribute("href"));
@@ -139,46 +141,147 @@ test("facts, typed panels, coverage attributes, entities and comparison links", 
   assert.match(title(data, document.targets[0].id), /jdbc.*conformance/);
 });
 
-test("findings are classified, counted, folded, and reached from signal cards", async (t) => {
+test("a clean run reads as conformant and has nothing to fix", async (t) => {
+  const document = report([
+    target({
+      signals: [
+        {
+          type: "metric",
+          name: "db.duration",
+          emitted: ["db.system", "db.namespace"],
+          coverage: {
+            required: { emitted: 1, declared: 1 },
+            recommended: { emitted: 1, declared: 1 },
+          },
+        },
+      ],
+      summary: {
+        required: { emitted: 1, declared: 1 },
+        recommended: { emitted: 1, declared: 1 },
+        findings: 0,
+      },
+    }),
+  ]);
+  await setup(t, document);
+  const page = view(await load(), document.targets[0].id);
+  assert.equal(lead(page), "Fully conformant on this run.");
+  assert.equal(page.querySelector(".verdict-mark").textContent, "✓");
+  assert.equal(
+    page.querySelector('section[aria-label="Needs attention"]'),
+    null,
+  );
+  assert.equal(page.querySelectorAll(".compare").length, 1);
+});
+
+test("a required miss is rolled up at its strictest level", async (t) => {
+  const document = report([
+    target({
+      // The conditional declaration comes first, so letting the first signal
+      // decide the level would drop the required miss.
+      signals: [
+        {
+          type: "metric",
+          name: "db.connections",
+          emitted: [],
+          coverage: {
+            conditionally_required_conditional: { emitted: 0, declared: 1 },
+          },
+        },
+        {
+          type: "metric",
+          name: "db.duration",
+          emitted: ["db.namespace"],
+          coverage: {
+            required: { emitted: 0, declared: 1 },
+            recommended: { emitted: 1, declared: 1 },
+          },
+        },
+      ],
+      summary: {
+        required: { emitted: 0, declared: 1 },
+        recommended: { emitted: 1, declared: 1 },
+        findings: 1,
+      },
+      findings: [
+        {
+          id: "required_attribute_not_present",
+          message: "Required attribute 'db.system' is not present.",
+          context: { attribute_key: "db.system" },
+          signal_type: "metric",
+          signal_name: "db.duration",
+        },
+      ],
+    }),
+  ]);
+  document.registry["database-conformance"].metrics[
+    "db.connections"
+  ].attributes["db.system"] = "conditionally_required_conditional";
+  await setup(t, document);
+  const page = view(await load(), document.targets[0].id);
+  assert.equal(lead(page), "1 required attribute not emitted.");
+  const [row, ...rest] = attention(page, "Required attributes not emitted");
+  assert.equal(rest.length, 0);
+  assert.equal(row.querySelector(".what a").textContent, "db.system");
+  assert.match(row.querySelector(".what small").textContent, /^Required$/);
+  assert.deepEqual(
+    [...row.querySelectorAll(".where button")].map((b) => b.textContent),
+    ["db.connections", "db.duration"],
+  );
+  // The absence weaver reported folds into the coverage row, not its own.
+  assert.equal(row.dataset.findings, "1");
+  assert.equal(attention(page, "Expected, not emitted").length, 0);
+});
+
+test("findings are grouped, and where-chips open the signal they name", async (t) => {
   const document = detailed();
   const window = await setup(t, document, `#/target/${document.targets[0].id}`);
   const page = view(await load(), document.targets[0].id);
   window.document.querySelector("main").replaceChildren(page);
-  assert.deepEqual(
-    [...page.querySelectorAll(".findings [data-kind]")].map(
-      (node) => node.dataset.kind,
-    ),
-    ["violation", "absent", "unregistered"],
-  );
+  const [mismatch, rule] = attention(page, "Breaks the convention");
+  assert.equal(mismatch.dataset.findings, "4");
+  assert.match(mismatch.textContent, /Attribute type mismatch/);
+  assert.match(mismatch.textContent, /reported 4×/);
+  // A span finding carries the span's own name; with one span it still opens.
+  assert.equal(rule.querySelector(".where button").textContent, "SELECT");
+  assert.equal(rule.querySelector(".where button").dataset.opens, "span:query");
+  assert.equal(attention(page, "Expected, not emitted").length, 1);
+  assert.equal(attention(page, "Recommended attributes not emitted").length, 1);
+  assert.equal(attention(page, "Not in the registry").length, 1);
+
+  const rows = [...page.querySelectorAll("tr[data-signal]")];
+  // Two grouped findings beat one; nothing has a required miss to outrank it.
+  assert.equal(rows[0].dataset.signal, "metric:db.duration");
+  assert.equal(rows[0].querySelector(".count-badge").textContent, "2");
+  const toggle = rows[0].querySelector(".row-toggle");
+  const detail = rows[0].nextElementSibling;
+  assert.equal(detail.hidden, true);
+  toggle.click();
+  assert.equal(detail.hidden, false);
+  assert.equal(toggle.getAttribute("aria-expanded"), "true");
+  const column = (kind) =>
+    [...detail.querySelectorAll(`[data-column="${kind}"] li`)].map(
+      (li) => li.textContent,
+    );
+  assert.deepEqual(column("emitted"), ["db.system"]);
+  assert.deepEqual(column("missing"), ["db.namespace"]);
+  assert.deepEqual(column("extra"), ["extra"]);
   assert.equal(
-    page.querySelector(".finding-counts").textContent,
-    "5 breaking the convention · 1 expected, not emitted · 1 not in the registry",
+    split(detail.querySelector(".compare").getAttribute("href")).path,
+    "/signals/metric:db.duration",
   );
-  assert.equal(page.querySelectorAll(".finding").length, 7);
-  assert.equal(page.querySelector("#finding-missing_attribute").open, false);
-  assert.equal(page.querySelector("#finding-type_mismatch").open, false);
-  assert.equal(
-    page.querySelector("#finding-required_attribute_not_present").open,
-    true,
-  );
-  assert.equal(page.querySelectorAll(".finding-id a").length, 0);
-  assert.match(
-    page.querySelector('section[aria-label="Events"] .signal-findings')
-      .textContent,
-    /1 finding:/,
-  );
-  assert.match(
-    page.querySelector('section[aria-label="Spans"] .signal-findings')
-      .textContent,
-    /1 finding:/,
-  );
-  page.querySelector('[data-finding="finding-type_mismatch"]').click();
-  assert.equal(page.querySelector("#finding-type_mismatch").open, true);
+  toggle.click();
+  assert.equal(detail.hidden, true);
+
+  const unknown = rows.find((row) => row.dataset.signal === "metric:unknown");
+  assert.match(unknown.nextElementSibling.textContent, /no declaration/);
+  assert.match(unknown.textContent, /n\/a/);
+
+  mismatch
+    .querySelector('.where button[data-opens="metric:db.duration"]')
+    .click();
+  assert.equal(detail.hidden, false);
   assert.equal(window.location.hash, `#/target/${document.targets[0].id}`);
-  assert.equal(
-    window.document.activeElement,
-    page.querySelector("#finding-type_mismatch summary"),
-  );
+  assert.equal(window.document.activeElement, toggle);
 });
 
 test("unknown and empty routes retain picker; multiword search and hotkey route escaped ids", async (t) => {
@@ -212,7 +315,7 @@ test("unknown and empty routes retain picker; multiword search and hotkey route 
   assert.equal(split(window.location.hash).path, "/target/" + item.id);
 });
 
-test("every committed target renders all findings, including the largest run", async (t) => {
+test("every committed target accounts for each finding once", async (t) => {
   const document = JSON.parse(
     await readFile(
       new URL("../data/conformance.json", import.meta.url),
@@ -223,30 +326,14 @@ test("every committed target renders all findings, including the largest run", a
   const data = await load();
   for (const item of data.targets) {
     const page = view(data, item.id);
-    assert.equal(
-      page.querySelectorAll(".finding").length,
-      item.findings.length,
-      item.id,
-    );
+    const counted = [...page.querySelectorAll("[data-findings]")]
+      .map((node) => Number(node.dataset.findings))
+      .reduce((sum, n) => sum + n, 0);
+    assert.equal(counted, item.findings.length, item.id);
     assert.equal(
       page.querySelectorAll(".compare").length,
       item.signals.length,
       item.id,
     );
-    // Span findings carry the span's own name, so a sole span is the only one
-    // they can be placed on without guessing.
-    const spans = page.querySelector('section[aria-label="Spans"]');
-    const placed = [...(spans?.querySelectorAll(".signal-findings a") ?? [])]
-      .map((a) => Number(a.textContent.match(/\((\d+)\)$/)[1]))
-      .reduce((sum, n) => sum + n, 0);
-    if (item.signals.filter((s) => s.type === "span").length === 1)
-      assert.equal(
-        placed,
-        item.findings.filter(
-          (f) =>
-            f.signal_type === "span" && findingKind(f.id) !== "unregistered",
-        ).length,
-        item.id,
-      );
   }
 });
