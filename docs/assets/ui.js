@@ -111,6 +111,7 @@ export function palette({ label, items, value, onPick }) {
   const listId = uid("palette");
   const chosen = items.find((item) => item.value === value);
   const lower = label.toLowerCase();
+  const article = /^[aeiou]/.test(lower) ? "an" : "a";
 
   // The button shows the choice, not the word for it: the heading beside it
   // already says what is being chosen, so only the accessible name repeats it.
@@ -123,14 +124,14 @@ export function palette({ label, items, value, onPick }) {
       "aria-expanded": "false",
       "aria-label": chosen
         ? `${label}: ${[chosen.badge, chosen.name].filter(Boolean).join(" ")}`
-        : `Choose a ${lower}`,
+        : `Choose ${article} ${lower}`,
       onclick: () => open(panel.hidden),
     },
     [
       chosen?.badge && el("span", { class: "badge", text: chosen.badge }),
       el("span", {
         class: "picker-name mono",
-        text: chosen ? chosen.name : `Choose a ${lower}…`,
+        text: chosen ? chosen.name : `Choose ${article} ${lower}…`,
       }),
       el("kbd", { class: "picker-key", text: APPLE() ? "⌘K" : "Ctrl K" }),
     ],
@@ -160,7 +161,7 @@ export function palette({ label, items, value, onPick }) {
       class: "palette",
       role: "dialog",
       "aria-modal": "true",
-      "aria-label": `Choose a ${lower}`,
+      "aria-label": `Choose ${article} ${lower}`,
       hidden: true,
     },
     [query, list],

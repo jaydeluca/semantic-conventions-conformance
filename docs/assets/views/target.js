@@ -8,6 +8,7 @@ import {
   attributeUrl,
   levelColor,
   ratio,
+  signalKey,
 } from "../data.js";
 import {
   coverageBar,
@@ -17,7 +18,7 @@ import {
   palette,
   trackBand,
 } from "../ui.js";
-import { go, targetHref, targetPath } from "../route.js";
+import { go, signalHref, targetHref, targetPath } from "../route.js";
 
 const REPO =
   "https://github.com/open-telemetry/semantic-conventions-conformance";
@@ -63,8 +64,6 @@ const TYPES = ["span", "metric", "event"];
 const FOLD = { recommended: 6, unregistered: 5 };
 // Past this many signals a row's chips are a wall; they fold into a count.
 const WHERE_FOLD = 5;
-const signalKey = (signal) => `${signal.type}:${signal.name}`;
-const compareUrl = (key) => `#/signals/${encodeURIComponent(key)}`;
 const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
 const rank = (level) => {
   const index = LEVELS.indexOf(level);
@@ -88,19 +87,19 @@ export function title(data, id) {
  */
 export default function target(data, id) {
   const found = data.byId.get(id);
+  const items = data.targets
+    .map((target) => ({
+      value: target.id,
+      name: fullLabel(target),
+      group: `${target.domain} · ${target.language}`,
+      badge: target.side ?? undefined,
+    }))
+    .sort(
+      (a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name),
+    );
   const picker = palette({
     label: "Instrumentation",
-    items: data.targets
-      .map((target) => ({
-        value: target.id,
-        name: fullLabel(target),
-        group: `${target.domain} · ${target.language}`,
-        badge: target.side ?? undefined,
-      }))
-      .sort(
-        (a, b) =>
-          a.group.localeCompare(b.group) || a.name.localeCompare(b.name),
-      ),
+    items,
     value: id,
     onPick: (value) => go(targetPath(value)),
   });
@@ -115,6 +114,7 @@ export default function target(data, id) {
     return el("div", {}, [
       controls,
       id && el("p", { class: "note", text: `No instrumentation called ${id}` }),
+      directory(items),
     ]);
   const view = model(data, found);
   const root = el("div", { class: "target-detail" }, [
@@ -141,6 +141,33 @@ export default function target(data, id) {
   return root;
 }
 
+/** Every target, grouped as the picker groups them, for a page with no id. */
+function directory(items) {
+  const groups = Map.groupBy(items, (item) => item.group);
+  return el(
+    "section",
+    { class: "directory", "aria-label": "All instrumentations" },
+    [...groups].map(([group, members]) =>
+      el("div", { class: "directory-group" }, [
+        el("h3", {}, [
+          group,
+          el("span", { class: "n", text: String(members.length) }),
+        ]),
+        el(
+          "ul",
+          {},
+          members.map((item) =>
+            el("li", {}, [
+              el("a", { href: targetHref(item.value), text: item.name }),
+              item.badge && el("span", { class: "badge", text: item.badge }),
+            ]),
+          ),
+        ),
+      ]),
+    ),
+  );
+}
+
 /**
  * Everything the page draws, derived once so the sections agree on counts.
  *
@@ -151,7 +178,7 @@ export default function target(data, id) {
  */
 function model(data, found) {
   const signals = found.signals.map((signal) => {
-    const key = signalKey(signal);
+    const key = signalKey(signal.type, signal.name);
     const declaration = data.signals.get(key);
     const levels = declaration?.attributes ?? {};
     const emitted = new Set(signal.emitted);
@@ -163,10 +190,10 @@ function model(data, found) {
       signal,
       key,
       levels,
-      kind:
+      spanKind:
         signal.type === "span"
-          ? (signal.identity?.span_kind ?? declaration?.kind ?? "span")
-          : signal.type,
+          ? (signal.identity?.span_kind ?? declaration?.kind ?? null)
+          : null,
       emitted: declared.filter((name) => emitted.has(name)),
       missing,
       extra: signal.emitted
@@ -213,7 +240,10 @@ function model(data, found) {
 function groupFindings(found, signals) {
   const byKey = new Map();
   for (const finding of found.findings) {
-    const attribute = finding.context?.attribute_key ?? null;
+    const attribute =
+      finding.context?.attribute_key ??
+      finding.context?.missing_attribute ??
+      null;
     const key = `${finding.id}\u0000${attribute ?? finding.message}`;
     if (!byKey.has(key))
       byKey.set(key, {
@@ -330,7 +360,7 @@ function header(data, { found, pin }) {
       peers.size > 1 &&
         common &&
         el("a", {
-          href: `${compareUrl(common.key)}?${new URLSearchParams({ lib: found.instrumented_library })}`,
+          href: `${signalHref(common.key)}?${new URLSearchParams({ lib: found.instrumented_library })}`,
           text: `Compare all instrumentations of ${found.instrumented_library}`,
         }),
     ]),
@@ -379,16 +409,19 @@ function coverage(view) {
 
   const levelTile = (level) => {
     const value = ratio(summary[level]);
-    return tile(`${LEVEL_LABEL[level]} attributes`, [
-      el("span", { class: "tile-big" }, [
-        value === null ? "n/a" : `${Math.round(value * 100)}%`,
-        value !== null &&
-          el("small", {
-            text: ` ${summary[level].emitted} of ${summary[level].declared}`,
-          }),
-      ]),
-      coverageBar(summary[level], level),
-    ]);
+    return tile(
+      [levelDot(level), `${LEVEL_LABEL[level]} attributes`],
+      [
+        el("span", { class: "tile-big" }, [
+          value === null ? "n/a" : `${Math.round(value * 100)}%`,
+          value !== null &&
+            el("small", {
+              text: ` ${summary[level].emitted} of ${summary[level].declared}`,
+            }),
+        ]),
+        coverageBar(summary[level], level),
+      ],
+    );
   };
 
   return el("section", { class: "scorecard", "aria-label": "Coverage" }, [
@@ -431,7 +464,7 @@ function coverage(view) {
 
 function tile(label, children) {
   return el("div", { class: "tile" }, [
-    el("span", { class: "tile-label", text: label }),
+    el("span", { class: "tile-label" }, label),
     ...children,
   ]);
 }
@@ -579,7 +612,7 @@ function signalTable(view) {
     )
     .flatMap((s) => {
       const detail = el("tr", { class: "signal-detail", hidden: true }, [
-        el("td", { colspan: 6 }, signalDetail(s, pin)),
+        el("td", { colspan: 7 }, signalDetail(s, pin)),
       ]);
       const row = el("tr", { "data-signal": s.key }, [
         el("td", {}, [
@@ -591,7 +624,8 @@ function signalTable(view) {
             onclick: () => expand(row, detail.hidden),
           }),
         ]),
-        el("td", { class: "kind", text: s.kind }),
+        el("td", { class: "kind", text: s.signal.type }),
+        el("td", { class: "kind", text: s.spanKind ?? "—" }),
         el("td", {}, coverageBar(s.signal.coverage?.required, "required")),
         el(
           "td",
@@ -632,7 +666,8 @@ function signalTable(view) {
             {},
             [
               "Signal",
-              "Kind",
+              "Type",
+              "Span kind",
               "Required",
               "Recommended",
               "All levels",
@@ -704,7 +739,7 @@ function signalDetail(s, pin) {
       ]),
     el("a", {
       class: "compare",
-      href: compareUrl(s.key),
+      href: signalHref(s.key),
       text: "compare across targets →",
     }),
   ];

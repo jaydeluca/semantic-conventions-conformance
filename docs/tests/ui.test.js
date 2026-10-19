@@ -321,10 +321,16 @@ test("app loads a deep link, skips to content, and follows signal changes", asyn
     window.document.querySelector('nav [aria-current="page"]').textContent,
     "Instrumentations",
   );
-  window.location.hash = "#/target";
-  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
-  assert.ok(main.querySelector(".picker"));
-  assert.equal(main.querySelector(".target-detail"), null);
+  for (const hash of ["#/target", "#/target/"]) {
+    window.location.hash = hash;
+    window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+    assert.ok(main.querySelector(".picker"));
+    assert.equal(main.querySelector(".target-detail"), null);
+    assert.equal(
+      window.document.querySelector('nav [aria-current="page"]').textContent,
+      "Instrumentations",
+    );
+  }
 
   window.location.hash = "#/signals/50%";
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));

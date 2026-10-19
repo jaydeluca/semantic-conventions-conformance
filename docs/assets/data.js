@@ -109,7 +109,7 @@ export async function load() {
 }
 
 /** How a signal is addressed, in the index below and in a `#/signals/` link. */
-const signalKey = (type, name) => `${type}:${name}`;
+export const signalKey = (type, name) => `${type}:${name}`;
 
 /**
  * @typedef {object} Signal

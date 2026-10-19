@@ -16,14 +16,19 @@
   --accent-soft: #eeecfb;
 
   /* Requirement levels. Ordered by how much an absence means, not by hue
-     family, so the legend reads as a scale. */
-  --required: #b4295c;
+     family, so the legend reads as a scale. None is red: a full required bar
+     is good news, and red read as a failure. */
+  --required: #0f766e;
   --recommended: #1d6fa5;
   --conditional: #7a6a9e;
   --optin: #8a8f9a;
 
   --good: #1a7f5a;
+  --bad: #b4295c;
   --miss: #e7e9ee;
+  /* A summary bar has no legend beside it, so a full one in the level red
+     read as an alarm; it stays neutral and the label carries the swatch. */
+  --fill-neutral: var(--ink-2);
   /* The "expected, not emitted" finding kind: between a broken rule and a
      name the registry lacks, so neither the level red nor the plain ink. */
   --warn: #b5730f;
@@ -56,12 +61,13 @@
     --accent: #a5a0f5;
     --accent-soft: #23213a;
 
-    --required: #f07fa5;
+    --required: #2dd4bf;
     --recommended: #6fb6e0;
     --conditional: #b0a2d4;
     --optin: #7d838f;
 
     --good: #4fc294;
+    --bad: #f07fa5;
     --miss: #262b33;
     --warn: #e0a95a;
 
@@ -169,6 +175,7 @@ code,
   letter-spacing: 0.035em;
 }
 .brand-title {
+  margin: 0;
   font-size: 1.1rem;
   font-weight: 650;
   letter-spacing: -0.035em;
@@ -922,7 +929,8 @@ details[open] > summary {
 .target-detail > section {
   margin: 0 0 1.8rem;
 }
-.target-detail h3 {
+.target-detail h3,
+.directory h3 {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -932,7 +940,8 @@ details[open] > summary {
   font-weight: 620;
   letter-spacing: -0.01em;
 }
-.target-detail h3 .n {
+.target-detail h3 .n,
+.directory h3 .n {
   color: var(--ink-3);
   font-size: 0.82rem;
   font-weight: 400;
@@ -993,7 +1002,7 @@ details[open] > summary {
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--bg);
-  background: var(--required);
+  background: var(--bad);
 }
 .verdict-mark.good {
   background: var(--good);
@@ -1028,6 +1037,12 @@ details[open] > summary {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink-2);
+}
+.tile .bar .bar-fill {
+  background: var(--fill-neutral);
+}
+.tile-label .dot {
+  margin-right: 0.35rem;
 }
 .tile-big {
   font-size: 1.55rem;
@@ -1200,8 +1215,8 @@ details[open] > summary {
   color: var(--ink-2);
 }
 .count-badge.hot {
-  background: color-mix(in srgb, var(--required) 14%, var(--surface));
-  color: var(--required);
+  background: color-mix(in srgb, var(--bad) 14%, var(--surface));
+  color: var(--bad);
   font-weight: 600;
 }
 tbody tr.signal-detail,
@@ -1296,4 +1311,23 @@ tr.signal-detail > td {
   .row-toggle::before {
     transition: none;
   }
+}
+
+.directory {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1.2rem 1.5rem;
+  margin-top: 1rem;
+}
+.directory ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.directory li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+  font-size: 0.9rem;
 }

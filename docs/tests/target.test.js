@@ -230,36 +230,45 @@ for (const id of [
   });
 }
 
-test("an absence folded into a recommended row still fails the verdict", async (t) => {
-  const document = report([
-    target({
-      signals: [
-        {
-          type: "metric",
-          name: "db.duration",
-          emitted: ["db.system"],
-          coverage,
-        },
-      ],
-      findings: [
-        {
-          id: "recommended_attribute_not_present",
-          message: "Recommended attribute 'db.namespace' is not present.",
-          context: { attribute_key: "db.namespace" },
-          signal_type: "metric",
-          signal_name: "db.duration",
-        },
-      ],
-    }),
-  ]);
-  await setup(t, document);
-  const page = view(await load(), document.targets[0].id);
-  assert.equal(lead(page), "1 absence finding reported.");
-  assert.equal(page.querySelector(".verdict-mark").textContent, "!");
-  const [row] = attention(page, "Recommended attributes not emitted");
-  assert.equal(row.dataset.findings, "1");
-  assert.equal(attention(page, "Expected, not emitted").length, 0);
-});
+// The GenAI rule names its attribute under a different context key.
+for (const [id, context] of [
+  ["recommended_attribute_not_present", { attribute_key: "db.namespace" }],
+  [
+    "genai_expected_attribute_missing",
+    { missing_attribute: "db.namespace", operation: "chat" },
+  ],
+]) {
+  test(`${id} folded into a recommended row still fails the verdict`, async (t) => {
+    const document = report([
+      target({
+        signals: [
+          {
+            type: "metric",
+            name: "db.duration",
+            emitted: ["db.system"],
+            coverage,
+          },
+        ],
+        findings: [
+          {
+            id,
+            message: "Attribute 'db.namespace' is not present.",
+            context,
+            signal_type: "metric",
+            signal_name: "db.duration",
+          },
+        ],
+      }),
+    ]);
+    await setup(t, document);
+    const page = view(await load(), document.targets[0].id);
+    assert.equal(lead(page), "1 absence finding reported.");
+    assert.equal(page.querySelector(".verdict-mark").textContent, "!");
+    const [row] = attention(page, "Recommended attributes not emitted");
+    assert.equal(row.dataset.findings, "1");
+    assert.equal(attention(page, "Expected, not emitted").length, 0);
+  });
+}
 
 for (const unknown of [false, true]) {
   test(`coverage is unassessed with ${unknown ? "only undeclared" : "no"} signals`, async (t) => {
@@ -370,6 +379,12 @@ test("findings are grouped, and where-chips open the signal they name", async (t
   assert.equal(attention(page, "Not in the registry").length, 1);
 
   const rows = [...page.querySelectorAll("tr[data-signal]")];
+  const kinds = (key) =>
+    [...page.querySelectorAll(`tr[data-signal="${key}"] td.kind`)].map(
+      (td) => td.textContent,
+    );
+  assert.deepEqual(kinds("span:query"), ["span", "client"]);
+  assert.deepEqual(kinds("metric:db.duration"), ["metric", "—"]);
   // Two grouped findings beat one; nothing has a required miss to outrank it.
   assert.equal(rows[0].dataset.signal, "metric:db.duration");
   assert.equal(rows[0].querySelector(".count-badge").textContent, "2");
@@ -422,6 +437,19 @@ test("unknown and empty routes retain picker; multiword search and hotkey route 
   const page = view(data, null);
   window.document.querySelector("main").replaceChildren(page);
   assert.equal(page.querySelector(".note"), null);
+  assert.equal(
+    page.querySelector(".picker").getAttribute("aria-label"),
+    "Choose an instrumentation",
+  );
+  const link = page.querySelector(".directory a");
+  assert.equal(
+    link.getAttribute("href"),
+    `#/target/http/java/a%20space/server%3F`,
+  );
+  assert.equal(
+    page.querySelector(".directory h3").firstChild.textContent,
+    "http · java",
+  );
   assert.equal(title(data, null), "instrumentations · conformance");
   window.document.dispatchEvent(
     new window.KeyboardEvent("keydown", { key: "k", metaKey: true }),
