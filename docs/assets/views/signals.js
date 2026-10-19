@@ -226,6 +226,10 @@ export default function signals(data, key, params) {
 
   return el("div", {}, [
     controls,
+    el("p", {
+      class: "tagline",
+      text: "What instrumentations actually emit, measured through Weaver live-check against the pinned registries.",
+    }),
     unknown &&
       el("p", { class: "note" }, [
         el("strong", { text: "No such signal in this report: " }),

@@ -16,9 +16,9 @@
   --accent-soft: #eeecfb;
 
   /* Requirement levels. Ordered by how much an absence means, not by hue
-     family, so the legend reads as a scale. None is red: a full required bar
-     is good news, and red read as a failure. */
-  --required: #0f766e;
+     family, so the legend reads as a scale. Required is purple: red read as
+     a failure, and red or teal blur with --good under colour blindness. */
+  --required: #8b2fc9;
   --recommended: #1d6fa5;
   --conditional: #7a6a9e;
   --optin: #8a8f9a;
@@ -26,11 +26,11 @@
   --good: #1a7f5a;
   --bad: #b4295c;
   --miss: #e7e9ee;
-  /* A summary bar has no legend beside it, so a full one in the level red
-     read as an alarm; it stays neutral and the label carries the swatch. */
+  /* A summary bar has no legend beside it, so a full one in a level colour
+     read as a verdict; it stays neutral and the label carries the swatch. */
   --fill-neutral: var(--ink-2);
   /* The "expected, not emitted" finding kind: between a broken rule and a
-     name the registry lacks, so neither the level red nor the plain ink. */
+     name the registry lacks, so neither a level colour nor the plain ink. */
   --warn: #b5730f;
 
   /* Languages. A separate scale from the requirement levels on purpose: it
@@ -61,7 +61,7 @@
     --accent: #a5a0f5;
     --accent-soft: #23213a;
 
-    --required: #2dd4bf;
+    --required: #c77dff;
     --recommended: #6fb6e0;
     --conditional: #b0a2d4;
     --optin: #7d838f;
@@ -270,6 +270,12 @@ h2 {
 .controls-row h2 {
   margin: 0;
   flex: none;
+}
+.tagline {
+  margin: 0 0 0.8rem;
+  color: var(--ink-2);
+  font-size: 0.855rem;
+  max-width: 62ch;
 }
 
 /* --- signal picker ------------------------------------------------------- */
